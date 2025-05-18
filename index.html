@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> 24 lottery </title>
+    <style>
+        /* CSS (Same as previous) */
+        body {
+            font-family: Arial, sans-serif; background-color: #1a1a1a; color: #f0f0f0;
+            margin: 0; padding: 0; display: flex; flex-direction: column;
+            justify-content: flex-start; align-items: center; min-height: 100vh;
+            padding-top: 10px; padding-bottom: 20px;
+        }
+        #offline-warning {
+            background-color: #e74c3c; color: white; text-align: center;
+            padding: 10px; display: none;
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 2000;
+        }
+        .container, #auth-screen-div {
+            width: 100%; max-width: 450px; background-color: #2c2c2c;
+            border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.5);
+            overflow: hidden; margin-bottom: 10px;
+        }
+        #auth-screen-div { padding: 20px; text-align: center; }
+        #auth-screen-div h2 { color: #FFD700; margin-bottom: 15px; }
+        #auth-screen-div form { display: none; }
+        #auth-screen-div form.active { display: block; }
+        #auth-screen-div input { width: calc(100% - 22px); padding: 10px; margin-bottom: 10px; border-radius: 5px; border: 1px solid #555; background-color: #333; color: #fff; }
+        #auth-screen-div button { padding: 10px 15px; background-color: #FFD700; color: #333; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 5px 0; width: 100%; }
+        .auth-toggle-link { color: #FFD700; cursor: pointer; text-decoration: underline; display: block; margin-top: 15px; font-size: 0.9em; }
+        .auth-status-message { color: #ccc; font-size: 0.9em; margin-top:10px; min-height: 1em;}
+        .error-message { color: #e74c3c; } .success-message { color: #2ecc71; }
+        #captcha-container { margin-bottom: 10px; }
+        #captcha-display { font-size: 1.5em; font-weight: bold; letter-spacing: 5px; padding: 8px; background-color: #444; color: #FFD700; border-radius: 4px; display: inline-block; user-select: none; }
+        #refresh-captcha-btn { font-size: 0.8em; margin-left: 10px; cursor: pointer; color: #aaa; }
+        .title-bar {background-color: #fff;color: #000;padding: 10px 15px;font-size: 18px;font-weight: bold;text-align: center;border-bottom: 1px solid #ddd;}
+        header {background-color: #3a3a3a;padding: 15px;display: flex;justify-content: space-between;align-items: center;border-bottom: 1px solid #4a4a4a;}
+        .balance-info {font-size: 14px;}
+        .balance-amount {font-size: 20px;font-weight: bold;color: #FFD700;}
+        .user-email {font-size: 0.7em;color: #ccc;margin-top: 3px;}
+        .logout-btn {background-color: #aaa;color: #333;font-size: 0.8em;padding: 3px 8px;border-radius: 3px;cursor: pointer;border: none;margin-left: 10px;}
+        .wallet-actions button {padding: 8px 15px;border: none;border-radius: 20px;font-size: 14px;font-weight: bold;cursor: pointer;margin-left: 10px;}
+        .withdraw-btn {background-color: #e74c3c;color: white;}
+        .deposit-btn {background-color: #2ecc71;color: white;}
+        .support-btn { /* Added style for customer support button */
+            background-color: #3498db; /* A distinct blue */
+            color: white;
+        }
+        .game-modes {display: flex;background-color: #282828;padding: 10px;}
+        .game-modes .mode-btn {flex-grow: 1;padding: 12px 0;margin: 0 5px;border: none;border-radius: 8px;background-color: #4a4a4a;color: #ccc;font-weight: bold;cursor: pointer;font-size: 14px;}
+        .game-modes .mode-btn.active-by-admin {background-color: #FFD700;color: #1e1e1e;}
+        .game-modes .mode-btn.active { background-color: #FFBF00; color: #1a1a1a; }
+
+        .current-game {display: flex;justify-content: space-between;align-items: center;padding: 15px;color: #333;border-radius: 8px;margin: 10px;}
+        .current-game.mode-1-active {background-color: #FFEB3B;}
+        .current-game.mode-2-active {background-color: #FFD700;}
+        .game-title-previous h3 {margin: 0 0 5px 0;font-size: 16px;font-weight: bold;}
+        .previous-results {display: flex;}
+        .previous-results span {width: 24px;height: 24px;border-radius: 50%;display: flex;justify-content: center;align-items: center;font-weight: bold;color: white;margin-right: 5px;font-size: 12px;border: 1px solid rgba(0,0,0,0.2);}
+        .prev-res-0 {background: radial-gradient(circle, #BA55D3 50%, #e74c3c 55%);}
+        .prev-res-1 {background-color: #2ecc71;} .prev-res-2 {background-color: #e74c3c;}
+        .prev-res-3 {background-color: #2ecc71;} .prev-res-4 {background-color: #e74c3c;}
+        .prev-res-5 {background: radial-gradient(circle, #BA55D3 50%, #2ecc71 55%);}
+        .prev-res-6 {background-color: #e74c3c;} .prev-res-7 {background-color: #2ecc71;}
+        .prev-res-8 {background-color: #e74c3c;} .prev-res-9 {background-color: #2ecc71;}
+        .timer-period {text-align: right;} .timer-period p {margin: 0 0 5px 0;font-size: 12px;}
+        .timer {font-size: 24px;font-weight: bold;background-color: #333;color: white;padding: 5px 10px;border-radius: 5px;display: inline-block;}
+        .timer span {width: 25px;display: inline-block;text-align: center;} .period-id {font-size: 12px;color: #555;}
+        .betting-options {padding: 15px;} .color-bets, .size-bets {display: flex;justify-content: space-around;margin-bottom: 15px;}
+        .bet-btn {padding: 10px 0;border: none;border-radius: 8px;font-weight: bold;cursor: pointer;font-size: 14px;color: white;flex: 1;margin: 0 5px;text-align: center;transition: transform 0.1s ease, box-shadow 0.1s ease;}
+        .bet-btn:disabled {opacity: 0.5;cursor: not-allowed; background-color: #555 !important; border-color: #444 !important; color: #888 !important;}
+        .bet-btn:active:not(:disabled) {transform: scale(0.95);}
+        .bet-btn.selected {box-shadow: 0 0 8px 3px #FFD700;border: 1px solid #FFD700;}
+        .bet-btn.green {background-color: #2ecc71;} .bet-btn.violet {background-color: #9b59b6;} .bet-btn.red {background-color: #e74c3c;}
+        .number-bets {display: grid;grid-template-columns: repeat(5, 1fr);gap: 10px;margin-bottom: 15px;}
+        .bet-btn.num {height: 50px;display: flex;justify-content: center;align-items: center;font-size: 18px;border-radius: 50%;border: 2px solid transparent;}
+        .num-0 {background: radial-gradient(circle, #BA55D3 50%, #e74c3c 55%);border-color: #e74c3c;}
+        .num-1 {background-color: #2ecc71;border-color: #27ae60;} .num-2 {background-color: #e74c3c;border-color: #c0392b;}
+        .num-3 {background-color: #2ecc71;border-color: #27ae60;} .num-4 {background-color: #e74c3c;border-color: #c0392b;}
+        .num-5 {background: radial-gradient(circle, #BA55D3 50%, #2ecc71 55%);border-color: #2ecc71;}
+        .num-6 {background-color: #e74c3c;border-color: #c0392b;} .num-7 {background-color: #2ecc71;border-color: #27ae60;}
+        .num-8 {background-color: #e74c3c;border-color: #c0392b;} .num-9 {background-color: #2ecc71;border-color: #27ae60;}
+        .bet-btn.small {background-color: #3498db;} .bet-btn.big {background-color: #f39c12;}
+        .history-tabs {display: flex;background-color: #282828;}
+        .history-tabs .tab-btn {flex-grow: 1;padding: 12px 0;border: none;background-color: transparent;color: #aaaaaa;font-weight: bold;cursor: pointer;font-size: 14px;border-bottom: 3px solid transparent;}
+        .history-tabs .tab-btn.active {color: #FFD700;border-bottom-color: #FFD700;}
+        .history-content {padding: 0;display: none;} .history-content.active {display: block;} .history-content p {padding: 15px;text-align: center;color: #777;}
+        table {width: 100%;border-collapse: collapse;font-size: 13px;} thead {background-color: #3a3a3a;}
+        th, td {padding: 10px;text-align: center;border-bottom: 1px solid #4a4a4a;}
+        th {color: #cccccc;} td {color: #f0f0f0;} tbody tr:last-child td {border-bottom: none;}
+        .history-number {font-weight: bold;} .num-color-red {color: #e74c3c;} .num-color-green {color: #2ecc71;} .num-color-violet {color: #9b59b6;}
+        .color-dots span {display: inline-block;width: 10px;height: 10px;border-radius: 50%;margin: 0 2px;}
+        .dot-red {background-color: #e74c3c;} .dot-green {background-color: #2ecc71;} .dot-violet {background-color: #9b59b6;}
+        .modal {display: none;position: fixed;z-index: 1000;left: 0;top: 0;width: 100%;height: 100%;overflow: auto;background-color: rgba(0,0,0,0.7);justify-content: center;align-items: center;}
+        .modal-content {background-color: #3e3e3e;margin: auto;padding: 20px;border: 1px solid #777;width: 90%;max-width: 400px;border-radius: 8px;text-align: left;color: #f0f0f0;}
+        .modal-content h3 {margin-top: 0;color: #FFD700;text-align: center;margin-bottom: 15px;}
+        .modal-content label {display: block;margin: 10px 0 5px;font-size: 0.9em;}
+        .modal-content input[type="number"], .modal-content input[type="text"], .modal-content input[type="url"], .modal-content input[type="password"] {width: calc(100% - 22px);padding: 10px;margin-bottom: 10px;border-radius: 5px;border: 1px solid #555;background-color: #2c2c2c;color: #fff;}
+        .modal-content textarea {width: calc(100% - 22px);padding: 10px;margin-bottom: 10px;border-radius: 5px;border: 1px solid #555;background-color: #2c2c2c;color: #fff;min-height: 60px;}
+        .modal-buttons {text-align: right;margin-top: 15px;}
+        .modal-buttons button {padding: 10px 15px;margin-left: 10px;border-radius: 5px;border: none;cursor: pointer;font-weight: bold;}
+        .modal-confirm-btn {background-color: #2ecc71;color: white;}
+        .modal-cancel-btn {background-color: #e74c3c;color: white;}
+        .modal-message {font-size: 0.9em;margin-bottom: 10px;min-height: 1em;text-align: center;}
+        #deposit-qr-image {max-width: 100%;height: auto;display: block;margin: 10px auto;border: 1px solid #555;}
+        #deposit-instructions-display {font-size: 0.9em;margin-bottom:15px;padding:10px;background-color:#2a2a2a;border-radius:4px;}
+        .status-pending { color: #f39c12; }
+        .status-approved { color: #2ecc71; }
+        .status-rejected { color: #e74c3c; }
+    </style>
+</head>
+<body>
+    <div id="offline-warning">Connecting to server... If this persists, check your internet connection.</div>
+
+    <div id="auth-screen-div">
+        <form id="login-form" class="active"><h2>Login</h2><input type="tel" id="login-mobile" placeholder="Mobile Number (10 digits)" maxlength="10" autocomplete="username"><input type="password" id="login-password" placeholder="Password" autocomplete="current-password"><button type="submit">Login</button><div id="auth-status-login" class="auth-status-message"></div><span class="auth-toggle-link" data-form="register-form">Don't have an account? Register</span></form>
+        <form id="register-form"><h2>Register</h2><input type="text" id="register-name" placeholder="Full Name" required><input type="tel" id="register-mobile" placeholder="Mobile Number (10 digits)" maxlength="10" required autocomplete="username"><input type="password" id="register-password" placeholder="Password (min 6 chars)" required autocomplete="new-password"><input type="password" id="register-confirm-password" placeholder="Confirm Password" required autocomplete="new-password"><div id="captcha-container"><label for="register-captcha">Enter the numbers: <span id="captcha-display">----</span> <span id="refresh-captcha-btn">🔄</span></label><input type="text" id="register-captcha" placeholder="Captcha" maxlength="4" required></div><button type="submit">Register</button><div id="auth-status-register" class="auth-status-message"></div><span class="auth-toggle-link" data-form="login-form">Already have an account? Login</span></form>
+    </div>
+
+    <div class="container" id="game-container" style="display:none;">
+        <div class="title-bar">24 lottery</div>
+        <header>
+            <div class="balance-info">
+                <span class="balance-amount" id="wallet-balance">₹ 0.00</span>
+                <div class="user-email" id="user-email-display">Not logged in</div>
+            </div>
+            <div class="wallet-actions">
+                <button class="logout-btn" id="logout-btn" style="display:none;">Logout</button>
+                <button class="deposit-btn" id="show-deposit-modal-btn">Deposit</button>
+                <button class="withdraw-btn" id="show-withdraw-modal-btn">Withdraw</button>
+                <button class="support-btn" id="customer-support-btn">Customer Support</button> <!-- Added Button -->
+            </div>
+        </header>
+        <section class="game-modes"> 
+            <button class="mode-btn" data-mode="1" data-modename="Win Go 1 Min">Win Go 1 Min</button> 
+            <button class="mode-btn" data-mode="2" data-modename="Win Go 2 Min">Win Go 2 Min</button> 
+        </section>
+        <section class="current-game mode-1-active" id="current-game-section"> <div class="game-title-previous"> <h3 id="game-mode-title">Win Go 1 Min</h3> <div class="previous-results"> <span id="prev-res-1">?</span> <span id="prev-res-2">?</span> <span id="prev-res-3">?</span> <span id="prev-res-4">?</span> </div> </div> <div class="timer-period"> <p>Time Remaining</p> <div class="timer" id="timer-display">00 : <span id="countdown-seconds">00</span></div> <p class="period-id" id="current-period-id">Fetching...</p> </div> </section>
+        <section class="betting-options"> <div class="color-bets"> <button class="bet-btn green" data-bet-type="color" data-bet-value="Green">GREEN</button> <button class="bet-btn violet" data-bet-type="color" data-bet-value="Violet">VIOLET</button> <button class="bet-btn red" data-bet-type="color" data-bet-value="Red">RED</button> </div> <div class="number-bets" id="number-bets-container"></div> <div class="size-bets"> <button class="bet-btn small" data-bet-type="size" data-bet-value="Small">SMALL</button> <button class="bet-btn big" data-bet-type="size" data-bet-value="Big">BIG</button> </div> </section>
+        
+        <section class="history-tabs"> 
+            <button class="tab-btn active" data-tab="game-history">Game History</button> 
+            <button class="tab-btn" data-tab="my-history">My Bets</button>
+            <button class="tab-btn" data-tab="deposit-history">Deposit History</button>
+            <button class="tab-btn" data-tab="withdrawal-history">Withdrawal History</button>
+        </section>
+
+        <section id="game-history" class="history-content active"> <table> <thead> <tr><th>Period</th><th>Number</th><th>Result</th><th>Colour</th></tr> </thead> <tbody id="game-history-body"></tbody> </table> </section>
+        <section id="my-history" class="history-content"> <p id="my-bets-placeholder">Your bets for the current/last round will appear here.</p> <table id="my-bets-table" style="display:none;"> <thead><tr><th>Period</th><th>Type</th><th>Value</th><th>Amount</th><th>Status</th><th>Payout</th></tr></thead> <tbody id="my-bets-body"></tbody> </table> </section>
+        
+        <section id="deposit-history" class="history-content">
+            <table>
+                <thead><tr><th>Date</th><th>Amount</th><th>Transaction ID</th><th>Status</th><th>Admin Remarks</th></tr></thead>
+                <tbody id="deposit-history-body"><tr><td colspan="5">Loading deposit history...</td></tr></tbody>
+            </table>
+        </section>
+        <section id="withdrawal-history" class="history-content">
+            <table>
+                <thead><tr><th>Date</th><th>Amount</th><th>UPI ID</th><th>Status</th><th>Admin Remarks</th></tr></thead>
+                <tbody id="withdrawal-history-body"><tr><td colspan="5">Loading withdrawal history...</td></tr></tbody>
+            </table>
+        </section>
+
+    </div>
+
+    <div id="bet-modal" class="modal"> <div class="modal-content"> <h3>Place Bet on <span id="bet-modal-type-value"></span></h3> <input type="number" id="bet-amount-input" placeholder="Enter amount (Min: 10)" min="10"> <div class="modal-message error-message" id="bet-modal-error"></div> <div class="modal-buttons"> <button id="modal-cancel-bet-btn" class="modal-cancel-btn">Cancel</button> <button id="modal-confirm-bet-btn" class="modal-confirm-btn">Confirm Bet</button> </div> </div> </div>
+    <div id="deposit-modal" class="modal"> <div class="modal-content"> <h3>Deposit Funds</h3> <div id="deposit-instructions-display">Loading deposit instructions...</div> <img id="deposit-qr-image" src="" alt="Deposit QR Code" style="display:none;"> <label for="deposit-amount-sent">Amount You Sent (Min: 100):</label> <input type="number" id="deposit-amount-sent" placeholder="e.g., 100" min="100"> <label for="deposit-transaction-id">Transaction ID / Reference:</label> <input type="text" id="deposit-transaction-id" placeholder="Enter your payment reference"> <div class="modal-message" id="deposit-modal-message"></div> <div class="modal-buttons"> <button id="deposit-modal-cancel-btn" class="modal-cancel-btn">Cancel</button> <button id="deposit-modal-submit-btn" class="modal-confirm-btn">Submit Proof</button> </div> </div> </div>
+    <div id="withdraw-modal" class="modal"> <div class="modal-content"> <h3>Withdraw Funds</h3> <label for="withdraw-upi-id">Your UPI ID:</label> <input type="text" id="withdraw-upi-id" placeholder="e.g., yourname@upi"> <label for="withdraw-amount">Amount to Withdraw (Min: 130, Max: 50000):</label> <input type="number" id="withdraw-amount" placeholder="e.g., 130" min="130" max="50000"> <div class="modal-message" id="withdraw-modal-message"></div> <div class="modal-buttons"> <button id="withdraw-modal-cancel-btn" class="modal-cancel-btn">Cancel</button> <button id="withdraw-modal-submit-btn" class="modal-confirm-btn">Request Withdrawal</button> </div> </div> </div>
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+      import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, updateProfile as updateAuthProfile } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+      import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp, writeBatch, runTransaction, increment, where, Timestamp, addDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+
+      const firebaseConfig = {
+        apiKey: "AIzaSyDOjP6W7A1sZSoquYH8SIRUnN6TSPE-ovI", // Replace with your actual config
+        authDomain: "color-prediction-2ca40.firebaseapp.com",
+        databaseURL: "https://color-prediction-2ca40-default-rtdb.firebaseio.com",
+        projectId: "color-prediction-2ca40",
+        storageBucket: "color-prediction-2ca40.appspot.com",
+        messagingSenderId: "1055872110258",
+        appId: "1:1055872110258:web:c3276ac642b9fd13c243ab",
+        measurementId: "G-RSGC9JNLDJ"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const FAKE_EMAIL_DOMAIN = "@colorpred.game"; 
+
+      // DOM Elements
+      const offlineWarningEl = document.getElementById('offline-warning');
+      const authScreenDiv = document.getElementById('auth-screen-div');
+      const loginForm = document.getElementById('login-form');
+      const registerForm = document.getElementById('register-form');
+      const loginMobileEl = document.getElementById('login-mobile');
+      const loginPasswordEl = document.getElementById('login-password');
+      const authStatusLoginEl = document.getElementById('auth-status-login');
+      const registerNameEl = document.getElementById('register-name');
+      const registerMobileEl = document.getElementById('register-mobile');
+      const registerPasswordEl = document.getElementById('register-password');
+      const registerConfirmPasswordEl = document.getElementById('register-confirm-password');
+      const captchaDisplayEl = document.getElementById('captcha-display');
+      const refreshCaptchaBtn = document.getElementById('refresh-captcha-btn');
+      const registerCaptchaEl = document.getElementById('register-captcha');
+      const authStatusRegisterEl = document.getElementById('auth-status-register');
+      const gameContainerEl = document.getElementById('game-container');
+      const logoutBtn = document.getElementById('logout-btn');
+      const userEmailDisplayEl = document.getElementById('user-email-display');
+      const walletBalanceEl = document.getElementById('wallet-balance');
+      const timerDisplayEl = document.getElementById('timer-display');
+      const countdownSecondsEl = document.getElementById('countdown-seconds');
+      const currentPeriodIdEl = document.getElementById('current-period-id');
+      const gameHistoryBodyEl = document.getElementById('game-history-body');
+      const numberBetsContainerEl = document.getElementById('number-bets-container');
+      const prevResultEls = [ document.getElementById('prev-res-1'), document.getElementById('prev-res-2'), document.getElementById('prev-res-3'), document.getElementById('prev-res-4') ];
+      const gameModeTitleEl = document.getElementById('game-mode-title');
+      const currentGameSectionEl = document.getElementById('current-game-section');
+      const myBetsBodyEl = document.getElementById('my-bets-body');
+      const myBetsTableEl = document.getElementById('my-bets-table');
+      const myBetsPlaceholderEl = document.getElementById('my-bets-placeholder');
+      const betModalEl = document.getElementById('bet-modal');
+      const betModalTypeValueEl = document.getElementById('bet-modal-type-value');
+      const betAmountInputEl = document.getElementById('bet-amount-input');
+      const modalConfirmBetBtn = document.getElementById('modal-confirm-bet-btn');
+      const modalCancelBetBtn = document.getElementById('modal-cancel-bet-btn');
+      const betModalErrorEl = document.getElementById('bet-modal-error');
+      const showDepositModalBtn = document.getElementById('show-deposit-modal-btn');
+      const depositModalEl = document.getElementById('deposit-modal');
+      const depositQrImageEl = document.getElementById('deposit-qr-image');
+      const depositInstructionsDisplayEl = document.getElementById('deposit-instructions-display');
+      const depositAmountSentEl = document.getElementById('deposit-amount-sent');
+      const depositTransactionIdEl = document.getElementById('deposit-transaction-id');
+      const depositModalMessageEl = document.getElementById('deposit-modal-message');
+      const depositModalCancelBtn = document.getElementById('deposit-modal-cancel-btn');
+      const depositModalSubmitBtn = document.getElementById('deposit-modal-submit-btn');
+      const showWithdrawModalBtn = document.getElementById('show-withdraw-modal-btn');
+      const withdrawModalEl = document.getElementById('withdraw-modal');
+      const withdrawUpiIdEl = document.getElementById('withdraw-upi-id');
+      const withdrawAmountEl = document.getElementById('withdraw-amount');
+      const withdrawModalMessageEl = document.getElementById('withdraw-modal-message');
+      const withdrawModalCancelBtn = document.getElementById('withdraw-modal-cancel-btn');
+      const withdrawModalSubmitBtn = document.getElementById('withdraw-modal-submit-btn');
+      const gameModeButtons = document.querySelectorAll('.game-modes .mode-btn');
+      const depositHistoryBodyEl = document.getElementById('deposit-history-body');
+      const withdrawalHistoryBodyEl = document.getElementById('withdrawal-history-body');
+      const customerSupportBtn = document.getElementById('customer-support-btn'); // Added
+
+      let currentUser = null;
+      let currentUserData = null; 
+      let currentWalletBalance = 0; 
+      let activePeriodData = null; 
+      let gameTimerInterval;
+      let selectedBetButton = null; 
+      let payoutSettings = { number: 9, size: 1.9, color: 1.9, violet: 4.5, redOnZero: 2.0, greenOnFive: 2.0 };
+      let depositSettings = { qrImageUrl: "", instructions: "Loading deposit instructions..." };
+      let currentCaptcha = "";
+      let unsubscribeGameHistoryListener, unsubscribeActivePeriodListener, unsubscribeUserBetsListener, 
+          unsubscribePayoutSettings, unsubscribeDepositSettings, unsubscribeUserWalletListener,
+          unsubscribeDepositRequestsListener, unsubscribeWithdrawalRequestsListener;
+      let firestoreOnline = true;
+      let currentlyViewedGameMode = "1"; 
+
+      let processedPeriodBetStatusUpdatesClientSide = new Set(); 
+      let clientNotedApprovedDeposits = new Set();
+      let clientNotedRejectedWithdrawals = new Set();
+
+
+      // --- Firestore Connection Status Listener ---
+      const firestoreStatusDocRef = doc(db, "gameConfig", "statusCheck");
+      const unsubFirestoreStatus = onSnapshot(firestoreStatusDocRef,
+          (docSnap) => {
+              if (!firestoreOnline) {
+                  console.log("[User] Firestore connection re-established.");
+                  if(offlineWarningEl) offlineWarningEl.style.display = 'none';
+              }
+              firestoreOnline = true;
+              if (!docSnap.exists()) {
+                  if (auth.currentUser) { 
+                      setDoc(firestoreStatusDocRef, { lastChecked: serverTimestamp(), createdBy: auth.currentUser.uid })
+                          .catch(err => console.warn("Could not set statusCheck doc:", err.code, err.message));
+                  }
+              }
+          },
+          (error) => {
+              console.warn("[User] Firestore connection listener error:", error.code, error.message);
+              if (error.code === "unavailable" || String(error.message).toLowerCase().includes("offline") || error.code === "permission-denied") {
+                  firestoreOnline = false;
+                  if(offlineWarningEl) {
+                      offlineWarningEl.style.display = 'block';
+                      offlineWarningEl.textContent = `Connection error (${error.code}). Check internet or app setup. Retrying...`;
+                  }
+                  if(error.code === "permission-denied"){
+                      console.error("FATAL: Permission denied on reading gameConfig/statusCheck.");
+                  }
+              }
+          }
+      );
+
+      // --- Utility Functions ---
+      function generateCaptcha() {
+          currentCaptcha = Math.random().toString().substring(2, 6);
+          if(captchaDisplayEl) captchaDisplayEl.textContent = currentCaptcha;
+      }
+
+      function clearAllListeners() {
+          console.log("[User] Clearing all user-specific listeners.");
+          if (unsubscribeGameHistoryListener) unsubscribeGameHistoryListener();
+          if (unsubscribeActivePeriodListener) unsubscribeActivePeriodListener();
+          if (unsubscribeUserBetsListener) unsubscribeUserBetsListener();
+          if (unsubscribePayoutSettings) unsubscribePayoutSettings();
+          if (unsubscribeDepositSettings) unsubscribeDepositSettings();
+          if (unsubscribeUserWalletListener) unsubscribeUserWalletListener();
+          if (unsubscribeDepositRequestsListener) unsubscribeDepositRequestsListener(); 
+          if (unsubscribeWithdrawalRequestsListener) unsubscribeWithdrawalRequestsListener(); 
+          stopClientTimer(); 
+          processedPeriodBetStatusUpdatesClientSide.clear(); 
+          clientNotedApprovedDeposits.clear();
+          clientNotedRejectedWithdrawals.clear();
+      }
+
+      function formatCurrency(amount) { return `₹ ${Number(amount || 0).toFixed(2)}`; }
+      
+      function updateWalletDisplay() { 
+          if(walletBalanceEl) walletBalanceEl.textContent = formatCurrency(currentWalletBalance); 
+      }
+
+      function formatDate(timestamp) {
+        if (!timestamp || !timestamp.toDate) return 'N/A';
+        return timestamp.toDate().toLocaleString();
+      }
+
+      function getResultDetails(number) {
+          const num = parseInt(number);
+          let colors = []; 
+          let size = (num >= 0 && num <= 4) ? "Small" : "Big"; 
+
+          if (num === 0) { colors = ["Red", "Violet"]; }
+          else if (num === 5) { colors = ["Green", "Violet"]; }
+          else if ([1, 3, 7, 9].includes(num)) { colors = ["Green"]; } 
+          else if ([2, 4, 6, 8].includes(num)) { colors = ["Red"]; }   
+          
+          return { number: num, colors, size: size.toUpperCase() };
+      }
+      
+      // --- User Setup and Auth ---
+      async function setupUserOnLogin(uid, authUser) {
+          const userRef = doc(db, "users", uid);
+          try {
+              let userSnap = await getDoc(userRef);
+              let nameToUse = authUser.displayName || registerNameEl.value.trim() || "New User"; 
+              let mobileToUse = authUser.email ? authUser.email.split('@')[0] : (registerMobileEl.value.trim() || null);
+
+              if (!userSnap.exists()) {
+                  if (!mobileToUse) {
+                      throw new Error("User profile data is corrupt (mobile number missing).");
+                  }
+                  const initialUserData = {
+                      uid: uid, displayName: nameToUse, mobileNumber: mobileToUse, emailForAuth: authUser.email,
+                      walletBalance: 10.00, 
+                      isBanned: false, createdAt: serverTimestamp(), lastLoginAt: serverTimestamp(),
+                      upiId: "" 
+                  };
+                  await setDoc(userRef, initialUserData);
+                  currentUserData = initialUserData; 
+                  if (authUser.displayName !== nameToUse) {
+                      await updateAuthProfile(authUser, { displayName: nameToUse }).catch(e => console.warn("Failed to update auth profile name", e));
+                  }
+              } else {
+                  currentUserData = userSnap.data();
+                  let updates = { lastLoginAt: serverTimestamp() };
+                  if (nameToUse !== currentUserData.displayName && nameToUse !== "New User") {
+                      updates.displayName = nameToUse;
+                      if (authUser.displayName !== nameToUse) {
+                         await updateAuthProfile(authUser, { displayName: nameToUse }).catch(e => console.warn("Failed to update auth profile name", e));
+                      }
+                  }
+                  if (mobileToUse && mobileToUse !== currentUserData.mobileNumber) { 
+                      updates.mobileNumber = mobileToUse;
+                  }
+                  await updateDoc(userRef, updates);
+                  currentUserData = {...currentUserData, ...updates}; 
+              }
+              if(userEmailDisplayEl) userEmailDisplayEl.textContent = currentUserData.displayName || currentUserData.mobileNumber || "User";
+              if(withdrawUpiIdEl && currentUserData.upiId) withdrawUpiIdEl.value = currentUserData.upiId;
+              return true;
+          } catch (e) {
+              console.error(`[User][setupUserOnLogin] Error for UID ${uid}:`, e.code, e.message, e);
+              if(authStatusLoginEl) authStatusLoginEl.textContent = `Error loading profile: ${e.message}`;
+              if(authStatusRegisterEl) authStatusRegisterEl.textContent = `Error setting up profile: ${e.message}`;
+              currentUserData = null;
+              return false;
+          }
+      }
+
+      onAuthStateChanged(auth, async (user) => {
+          clearAllListeners(); 
+          if (user) {
+              const freshUser = auth.currentUser; 
+              if (!freshUser) {
+                  authScreenDiv.style.display = 'block'; gameContainerEl.style.display = 'none'; disableBetting(); return;
+              }
+              if(authStatusLoginEl) authStatusLoginEl.textContent = "Verifying account...";
+              try {
+                  const setupSuccess = await setupUserOnLogin(freshUser.uid, freshUser);
+                  if (setupSuccess && currentUserData) { 
+                      if (currentUserData.isBanned) {
+                          if(authStatusLoginEl) authStatusLoginEl.textContent = "Your account is banned.";
+                          await signOut(auth).catch(err => console.warn("Sign out failed after banned check:", err));
+                          return; 
+                      }
+                      currentUser = freshUser; 
+                      if(authScreenDiv) authScreenDiv.style.display = 'none';
+                      if(gameContainerEl) gameContainerEl.style.display = 'block';
+                      if(logoutBtn) logoutBtn.style.display = 'inline-block';
+                      attachAuthDependentListeners(); 
+                      initializeAppLogic(); 
+                      if(authStatusLoginEl) authStatusLoginEl.textContent = "";
+                  } else {
+                      if(authStatusLoginEl) authStatusLoginEl.textContent = "Failed to load your profile.";
+                      await signOut(auth).catch(err => console.warn("Sign out failed after profile load failure:", err));
+                  }
+              } catch (error) {
+                  if(authStatusLoginEl) authStatusLoginEl.textContent = "Error loading your profile.";
+                  await signOut(auth).catch(err => console.warn("Sign out failed during error handling:", err));
+              }
+          } else { 
+              currentUser = null; currentUserData = null; currentWalletBalance = 0; 
+              if(authScreenDiv) authScreenDiv.style.display = 'block';
+              if(gameContainerEl) gameContainerEl.style.display = 'none';
+              if(logoutBtn) logoutBtn.style.display = 'none';
+              if(userEmailDisplayEl) userEmailDisplayEl.textContent = 'Not logged in';
+              updateWalletDisplay(); 
+              if(loginForm) loginForm.classList.add('active'); 
+              if(registerForm) registerForm.classList.remove('active');
+              if(captchaDisplayEl) generateCaptcha(); 
+              disableBetting();
+              if(countdownSecondsEl) countdownSecondsEl.textContent = "00";
+              if(currentPeriodIdEl) currentPeriodIdEl.textContent = "Login to Play";
+              if(authStatusLoginEl) authStatusLoginEl.textContent = ""; 
+              if(authStatusRegisterEl) authStatusRegisterEl.textContent = "";
+          }
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+          if (loginForm) { 
+              loginForm.addEventListener('submit', async (e) => {
+                  e.preventDefault();
+                  const mobile = loginMobileEl.value.trim(); const password = loginPasswordEl.value;
+                  if (!mobile || mobile.length !== 10 || !password) { authStatusLoginEl.textContent = "Valid mobile (10 digits) and password required."; return; }
+                  const emailToLogin = `${mobile}${FAKE_EMAIL_DOMAIN}`;
+                  authStatusLoginEl.textContent = "Logging in...";
+                  try { await signInWithEmailAndPassword(auth, emailToLogin, password); } 
+                  catch (error) { authStatusLoginEl.textContent = `Login failed: ${error.message.replace("Firebase: ", "")}`; }
+              });
+          }
+          if (registerForm) { 
+              registerForm.addEventListener('submit', async (e) => {
+                  e.preventDefault();
+                  const name = registerNameEl.value.trim(); const mobile = registerMobileEl.value.trim();
+                  const password = registerPasswordEl.value; const confirmPassword = registerConfirmPasswordEl.value;
+                  const captchaInput = registerCaptchaEl.value.trim();
+                  if (!name || !mobile || mobile.length !== 10 || !password || password.length < 6 || !confirmPassword || !captchaInput) { authStatusRegisterEl.textContent = "All fields required. Mobile: 10 digits, Pass: min 6 chars."; return; }
+                  if (password !== confirmPassword) { authStatusRegisterEl.textContent = "Passwords do not match."; return; }
+                  if (captchaInput !== currentCaptcha) { authStatusRegisterEl.textContent = "Invalid CAPTCHA."; generateCaptcha(); return; }
+                  const emailToRegister = `${mobile}${FAKE_EMAIL_DOMAIN}`;
+                  authStatusRegisterEl.textContent = "Registering...";
+                  try {
+                      const userCredential = await createUserWithEmailAndPassword(auth, emailToRegister, password);
+                      await updateAuthProfile(userCredential.user, { displayName: name });
+                      authStatusRegisterEl.textContent = "Registration successful! Logging in..."; 
+                  } catch (error) { authStatusRegisterEl.textContent = `Registration failed: ${error.message.replace("Firebase: ", "")}`; generateCaptcha(); }
+              });
+          }
+          if (refreshCaptchaBtn) refreshCaptchaBtn.addEventListener('click', generateCaptcha);
+          document.querySelectorAll('.auth-toggle-link').forEach(link => { 
+              link.addEventListener('click', (e) => {
+                  const targetFormId = e.target.dataset.form;
+                  if(loginForm) loginForm.classList.toggle('active', targetFormId === 'login-form');
+                  if(registerForm) registerForm.classList.toggle('active', targetFormId === 'register-form');
+                  if(authStatusLoginEl) authStatusLoginEl.textContent = ""; if(authStatusRegisterEl) authStatusRegisterEl.textContent = "";
+                  if (targetFormId === 'register-form') generateCaptcha();
+              });
+          });
+          
+          if (modalCancelBetBtn) modalCancelBetBtn.addEventListener('click', () => { if(betModalEl) betModalEl.style.display = "none"; if(selectedBetButton) selectedBetButton.classList.remove('selected'); selectedBetButton = null; });
+          if (depositModalCancelBtn) depositModalCancelBtn.addEventListener('click', () => { if(depositModalEl) depositModalEl.style.display = 'none'; });
+          if (withdrawModalCancelBtn) withdrawModalCancelBtn.addEventListener('click', () => { if(withdrawModalEl) withdrawModalEl.style.display = 'none'; });
+
+          const tabButtons = document.querySelectorAll('.history-tabs .tab-btn');
+          const historyContents = document.querySelectorAll('.history-content');
+          tabButtons.forEach(button => { 
+              button.addEventListener('click', () => {
+                  tabButtons.forEach(btn => btn.classList.remove('active')); button.classList.add('active');
+                  const tabId = button.dataset.tab;
+                  historyContents.forEach(content => { content.classList.toggle('active', content.id === tabId); });
+              });
+          });
+          
+          gameModeButtons.forEach(button => { 
+              button.addEventListener('click', () => {
+                  gameModeButtons.forEach(btn => btn.classList.remove('active')); button.classList.add('active');
+                  currentlyViewedGameMode = button.dataset.mode;
+                  if (activePeriodData && activePeriodData.gameMode !== currentlyViewedGameMode) { listenToGameHistory(currentlyViewedGameMode); } 
+                  else if (activePeriodData) { listenToGameHistory(activePeriodData.gameMode); }
+                  else { listenToGameHistory(currentlyViewedGameMode); }
+              });
+          });
+
+          // Customer Support Button Listener
+          if (customerSupportBtn) {
+              customerSupportBtn.addEventListener('click', () => {
+                  window.open('https://t.me/D_24lottery_customer_support', '_blank');
+              });
+          }
+
+          generateCaptcha();
+          disableBetting(); 
+          if(currentPeriodIdEl) currentPeriodIdEl.textContent = "Login to Play";
+          initializeGameUI(); 
+      });
+
+      function attachAuthDependentListeners() {
+          if (!currentUser) return;
+
+          if (logoutBtn) { logoutBtn.onclick = null; logoutBtn.addEventListener('click', async () => { await signOut(auth); }); }
+
+          if (showDepositModalBtn) {
+              showDepositModalBtn.onclick = null;
+              showDepositModalBtn.addEventListener('click', () => {
+                  if(depositModalMessageEl) depositModalMessageEl.textContent = "";
+                  if(depositQrImageEl) { depositQrImageEl.src = depositSettings.qrImageUrl; depositQrImageEl.style.display = depositSettings.qrImageUrl ? 'block' : 'none'; }
+                  if(depositInstructionsDisplayEl) depositInstructionsDisplayEl.innerHTML = depositSettings.instructions.replace(/\n/g, '<br>');
+                  if(depositAmountSentEl) depositAmountSentEl.value = ""; if(depositTransactionIdEl) depositTransactionIdEl.value = "";
+                  if(depositModalEl) depositModalEl.style.display = "flex";
+              });
+          }
+          if (showWithdrawModalBtn) {
+              showWithdrawModalBtn.onclick = null;
+              showWithdrawModalBtn.addEventListener('click', () => {
+                  if(withdrawModalMessageEl) withdrawModalMessageEl.textContent = ""; 
+                  if(withdrawUpiIdEl && currentUserData?.upiId) withdrawUpiIdEl.value = currentUserData.upiId; else if(withdrawUpiIdEl) withdrawUpiIdEl.value = "";
+                  if(withdrawAmountEl) withdrawAmountEl.value = "";
+                  if(withdrawModalEl) withdrawModalEl.style.display = "flex";
+              });
+          }
+
+          if (modalConfirmBetBtn) {
+              modalConfirmBetBtn.onclick = null;
+              modalConfirmBetBtn.addEventListener('click', async () => {
+                  if (!currentUser || !activePeriodData || activePeriodData.status !== "betting") { if(betModalErrorEl) betModalErrorEl.textContent = "Betting closed."; return; }
+                  const amount = parseInt(betAmountInputEl.value);
+                  if (isNaN(amount) || amount < 10) { if(betModalErrorEl) betModalErrorEl.textContent = "Min bet: ₹10."; return; }
+                  if (amount > currentWalletBalance) { if(betModalErrorEl) betModalErrorEl.textContent = "Insufficient balance."; return; }
+                  const betType = selectedBetButton.dataset.betType; const betValue = selectedBetButton.dataset.betValue;
+                  if (!betType || !betValue) { if(betModalErrorEl) betModalErrorEl.textContent = "Invalid selection."; return; }
+                  modalConfirmBetBtn.disabled = true; if(betModalErrorEl) betModalErrorEl.textContent = "Placing...";
+                  const betData = {
+                      userId: currentUser.uid, userDisplayName: currentUserData.displayName || currentUser.email.split('@')[0],
+                      periodId: activePeriodData.periodId, gameMode: activePeriodData.gameMode,
+                      betType: betType, betValue: betValue, amount: amount,
+                      status: "pending", payout: 0, placedAt: serverTimestamp()
+                  };
+                  const userRef = doc(db, "users", currentUser.uid); const betRef = doc(collection(db, "bets"));
+                  const transactionLogRef = doc(collection(db, "transactionHistory"));
+                  try {
+                      await runTransaction(db, async (transaction) => {
+                          const userDoc = await transaction.get(userRef);
+                          if (!userDoc.exists()) throw "User not found!";
+                          const serverBalance = userDoc.data().walletBalance;
+                          if (serverBalance < amount) throw "Insufficient balance (server check).";
+                          transaction.set(betRef, betData);
+                          transaction.update(userRef, { walletBalance: increment(-amount) }); 
+                          transaction.set(transactionLogRef, { userId: currentUser.uid, type: "bet_placed", amount: -amount, timestamp: serverTimestamp(), details: `Bet ${betType} ${betValue} P${activePeriodData.periodId}` });
+                      });
+                      if(betModalEl) betModalEl.style.display = "none"; if(betAmountInputEl) betAmountInputEl.value = "";
+                      alert(`Bet of ₹${amount} on ${betValue} placed!`);
+                      if(selectedBetButton) selectedBetButton.classList.remove('selected'); selectedBetButton = null;
+                  } catch (error) {
+                      if(betModalErrorEl) betModalErrorEl.textContent = `Error: ${error.toString().replace("FirebaseError: ", "")}`;
+                      alert(`Failed to place bet: ${error.toString().replace("FirebaseError: ", "")}`);
+                  } finally { modalConfirmBetBtn.disabled = false; }
+              });
+          }
+
+          if (depositModalSubmitBtn) {
+              depositModalSubmitBtn.onclick = null;
+              depositModalSubmitBtn.addEventListener('click', async () => {
+                  if (!currentUser) { if(depositModalMessageEl) depositModalMessageEl.textContent = "Not logged in."; return; }
+                  const amount = parseFloat(depositAmountSentEl.value); const txnId = depositTransactionIdEl.value.trim();
+                  if (isNaN(amount) || amount < 100) { if(depositModalMessageEl) depositModalMessageEl.textContent = "Min deposit: ₹100."; return; }
+                  if (!txnId) { if(depositModalMessageEl) depositModalMessageEl.textContent = "Txn ID required."; return; }
+                  if (!depositSettings.qrImageUrl) { if(depositModalMessageEl) depositModalMessageEl.textContent = "Deposit system unavailable."; return; }
+                  if(depositModalMessageEl) depositModalMessageEl.textContent = "Submitting..."; depositModalSubmitBtn.disabled = true;
+                  try {
+                      const requestData = {
+                          userId: currentUser.uid, userDisplayName: currentUserData.displayName || currentUser.email.split('@')[0],
+                          amount: amount, transactionId: txnId, qrImageUrlUsed: depositSettings.qrImageUrl, 
+                          status: "pending", remarks: "", requestedAt: serverTimestamp(), updatedAt: serverTimestamp()
+                      };
+                      await addDoc(collection(db, "depositRequests"), requestData);
+                      if(depositModalMessageEl) { depositModalMessageEl.textContent = "Deposit request submitted."; depositModalMessageEl.className = 'modal-message success-message'; }
+                      setTimeout(() => { if(depositModalEl) depositModalEl.style.display = 'none'; depositModalSubmitBtn.disabled = false; }, 3000);
+                  } catch (error) {
+                      if(depositModalMessageEl) { depositModalMessageEl.textContent = `Error: ${error.message}`; depositModalMessageEl.className = 'modal-message error-message'; }
+                      depositModalSubmitBtn.disabled = false;
+                  }
+              });
+          }
+
+          if (withdrawModalSubmitBtn) {
+              withdrawModalSubmitBtn.onclick = null;
+              withdrawModalSubmitBtn.addEventListener('click', async () => {
+                  if (!currentUser) { if(withdrawModalMessageEl) withdrawModalMessageEl.textContent = "Not logged in."; return; }
+                  const upi = withdrawUpiIdEl.value.trim(); const amount = parseFloat(withdrawAmountEl.value);
+                  const minWithdraw = 130, maxWithdraw = 50000;
+                  if (!upi || !/^[a-zA-Z0-9.\-_]{2,256}@[a-zA-Z]{2,64}$/.test(upi)) { if(withdrawModalMessageEl) withdrawModalMessageEl.textContent = "Valid UPI ID required."; return; }
+                  if (isNaN(amount) || amount < minWithdraw || amount > maxWithdraw) { if(withdrawModalMessageEl) withdrawModalMessageEl.textContent = `Withdraw: ₹${minWithdraw}-₹${maxWithdraw}.`; return; }
+                  if (amount > currentWalletBalance) { if(withdrawModalMessageEl) withdrawModalMessageEl.textContent = "Insufficient balance."; return; }
+                  if(withdrawModalMessageEl) withdrawModalMessageEl.textContent = "Processing..."; withdrawModalSubmitBtn.disabled = true;
+                  const userRef = doc(db, "users", currentUser.uid); const requestRef = doc(collection(db, "withdrawalRequests"));
+                  const transactionLogRef = doc(collection(db, "transactionHistory"));
+                  try {
+                      await runTransaction(db, async (transaction) => {
+                          const userDoc = await transaction.get(userRef);
+                          if (!userDoc.exists()) throw "User not found!";
+                          const serverBalance = userDoc.data().walletBalance;
+                          if (serverBalance < amount) throw "Insufficient balance (server check).";
+                          const requestData = {
+                              userId: currentUser.uid, userDisplayName: currentUserData.displayName || currentUser.email.split('@')[0],
+                              upiId: upi, amount: amount, status: "pending", remarks: "", 
+                              requestedAt: serverTimestamp(), updatedAt: serverTimestamp()
+                          };
+                          transaction.set(requestRef, requestData);
+                          transaction.update(userRef, { walletBalance: increment(-amount), upiId: upi }); 
+                          transaction.set(transactionLogRef, { userId: currentUser.uid, type: "withdrawal_requested", amount: -amount, timestamp: serverTimestamp(), details: `Withdrawal to ${upi}` });
+                      });
+                      currentUserData.upiId = upi; 
+                      if(withdrawModalMessageEl) { withdrawModalMessageEl.textContent = "Withdrawal request submitted."; withdrawModalMessageEl.className = 'modal-message success-message';}
+                      setTimeout(() => { if(withdrawModalEl) withdrawModalEl.style.display = 'none'; withdrawModalSubmitBtn.disabled = false;}, 3000);
+                  } catch (error) {
+                      if(withdrawModalMessageEl) { withdrawModalMessageEl.textContent = `Error: ${error.toString().replace("FirebaseError: ", "")}`; withdrawModalMessageEl.className = 'modal-message error-message';}
+                      withdrawModalSubmitBtn.disabled = false;
+                  }
+              });
+          }
+          setupBetButtonListeners(); 
+      }
+
+      function initializeAppLogic() {
+          if (!currentUser) return;
+          listenToWallet(currentUser.uid); 
+          listenToPayoutSettings();
+          listenToDepositSettings();
+          listenToActivePeriod(); 
+          listenToDepositRequests(currentUser.uid); 
+          listenToWithdrawalRequests(currentUser.uid); 
+      }
+
+      function listenToWallet(uid) {
+          if (unsubscribeUserWalletListener) unsubscribeUserWalletListener();
+          const userRef = doc(db, "users", uid);
+          unsubscribeUserWalletListener = onSnapshot(userRef, (docSnap) => {
+              if (docSnap.exists()) {
+                  currentUserData = docSnap.data(); 
+                  currentWalletBalance = currentUserData.walletBalance || 0; 
+                  updateWalletDisplay(); 
+                  console.log(`[User] Wallet balance updated from Firestore: ${formatCurrency(currentWalletBalance)}`);
+                  if (currentUserData.isBanned) { alert("Your account is banned."); signOut(auth); }
+              } else {
+                  signOut(auth); 
+              }
+          }, (error) => {
+              console.error("[User] Error listening to wallet:", error);
+          });
+      }
+
+      function listenToPayoutSettings() { 
+          if (unsubscribePayoutSettings) unsubscribePayoutSettings();
+          const settingsRef = doc(db, "gameConfig", "payoutSettings");
+          unsubscribePayoutSettings = onSnapshot(settingsRef, (docSnap) => {
+              if (docSnap.exists()) { payoutSettings = docSnap.data(); } 
+              else { console.warn("[User] Payout settings not found. Using defaults."); }
+          }, (error) => { console.error("[User] Error listening to payout settings:", error); });
+      }
+
+      function listenToDepositSettings() { 
+          if (unsubscribeDepositSettings) unsubscribeDepositSettings();
+          const settingsRef = doc(db, "gameConfig", "depositSettings");
+          unsubscribeDepositSettings = onSnapshot(settingsRef, (docSnap) => {
+              if (docSnap.exists()) { depositSettings = docSnap.data(); } 
+              else { depositSettings = { qrImageUrl: "", instructions: "Deposit system unavailable." }; }
+          }, (error) => { console.error("[User] Error listening to deposit settings:", error); });
+      }
+      
+      function listenToActivePeriod() {
+          if (unsubscribeActivePeriodListener) unsubscribeActivePeriodListener();
+          const activePeriodRef = doc(db, "gameConfig", "activePeriod");
+          unsubscribeActivePeriodListener = onSnapshot(activePeriodRef, (docSnap) => {
+              const previousPeriodId = activePeriodData ? activePeriodData.periodId : null;
+              const previousStatus = activePeriodData ? activePeriodData.status : null;
+
+              if (docSnap.exists()) {
+                  activePeriodData = { ...docSnap.data(), id: docSnap.id }; 
+                  if(currentPeriodIdEl) currentPeriodIdEl.textContent = `Period: ${activePeriodData.periodId}`;
+                  updateGameModeUI(activePeriodData.gameMode, activePeriodData.gameModeDuration);
+                  
+                  if (activePeriodData.periodId !== previousPeriodId) {
+                      processedPeriodBetStatusUpdatesClientSide.delete(previousPeriodId); 
+                      if (currentUser) listenToUserBets(activePeriodData.periodId, currentUser.uid);
+                  }
+
+                  if (activePeriodData.status === "betting") {
+                      enableBetting();
+                      startClientTimer(activePeriodData.startTime.toDate(), activePeriodData.gameModeDuration);
+                  } else if (activePeriodData.status === "ended") {
+                      disableBetting(); stopClientTimer();
+                      if(timerDisplayEl) timerDisplayEl.innerHTML = `Result: <strong style="color: ${getResultDetails(activePeriodData.winningNumber).colors[0] === 'Green' ? '#2ecc71' : (getResultDetails(activePeriodData.winningNumber).colors[0] === 'Red' ? '#e74c3c' : '#9b59b6')}">${activePeriodData.winningNumber}</strong>`;
+                      
+                      if (activePeriodData.winningNumber !== null && activePeriodData.winningNumber !== undefined) {
+                          processBetStatusUpdatesForRound_ClientSide(activePeriodData);
+                      }
+                      if (currentUser) listenToUserBets(activePeriodData.periodId, currentUser.uid); 
+                  } else { 
+                      disableBetting(); stopClientTimer();
+                      if(timerDisplayEl) timerDisplayEl.textContent = "Waiting...";
+                  }
+                  if (currentlyViewedGameMode === activePeriodData.gameMode) { listenToGameHistory(activePeriodData.gameMode); } 
+                  else { listenToGameHistory(currentlyViewedGameMode); }
+              } else {
+                  activePeriodData = null;
+                  if(currentPeriodIdEl) currentPeriodIdEl.textContent = "No Active Round";
+                  disableBetting(); stopClientTimer(); if(timerDisplayEl) timerDisplayEl.textContent = "N/A";
+                  gameModeButtons.forEach(btn => btn.classList.remove('active-by-admin'));
+                  if(gameModeTitleEl) gameModeTitleEl.textContent = "Game Paused";
+              }
+          }, (error) => {
+              console.error("[User] Error listening to active period:", error);
+              activePeriodData = null; disableBetting(); stopClientTimer(); if(currentPeriodIdEl) currentPeriodIdEl.textContent = "Error";
+          });
+      }
+
+      function listenToGameHistory(gameMode) { 
+          if (unsubscribeGameHistoryListener) unsubscribeGameHistoryListener();
+          const q = query(collection(db, "gameRounds"), where("gameMode", "==", gameMode), where("status", "==", "ended"), orderBy("endedAt", "desc"), limit(20)); 
+          unsubscribeGameHistoryListener = onSnapshot(q, (querySnapshot) => {
+              const historyData = []; querySnapshot.forEach((doc) => { historyData.push({ id: doc.id, ...doc.data() }); });
+              renderGameHistory(historyData); updatePreviousResultsDisplay(historyData.slice(0, 4)); 
+          }, (error) => { if(gameHistoryBodyEl) gameHistoryBodyEl.innerHTML = `<tr><td colspan="4">Error loading history.</td></tr>`; });
+      }
+
+      function listenToUserBets(periodId, uid) { 
+          if (unsubscribeUserBetsListener) unsubscribeUserBetsListener();
+          if (!periodId || !uid) { if(myBetsBodyEl) myBetsBodyEl.innerHTML = ""; if(myBetsTableEl) myBetsTableEl.style.display = "none"; if(myBetsPlaceholderEl) myBetsPlaceholderEl.style.display = "block"; return; }
+          const q = query(collection(db, "bets"), where("userId", "==", uid), where("periodId", "==", periodId), orderBy("placedAt", "desc"));
+          unsubscribeUserBetsListener = onSnapshot(q, (querySnapshot) => {
+              const bets = []; querySnapshot.forEach((doc) => { bets.push({ id: doc.id, ...doc.data() }); });
+              updateMyBetsDisplay(bets);
+          }, (error) => { if(myBetsBodyEl) myBetsBodyEl.innerHTML = `<tr><td colspan="6">Error loading bets.</td></tr>`; if(myBetsTableEl) myBetsTableEl.style.display = 'table'; if(myBetsPlaceholderEl) myBetsPlaceholderEl.style.display = "none"; });
+      }
+
+      function listenToDepositRequests(uid) {
+          if (unsubscribeDepositRequestsListener) unsubscribeDepositRequestsListener();
+          const q = query(collection(db, "depositRequests"), where("userId", "==", uid), orderBy("requestedAt", "desc"), limit(20));
+          unsubscribeDepositRequestsListener = onSnapshot(q, (querySnapshot) => {
+              const requests = []; querySnapshot.forEach((doc) => { requests.push({ id: doc.id, ...doc.data() }); });
+              renderDepositHistory(requests);
+              requests.forEach(req => {
+                  if (req.status === "approved" && !clientNotedApprovedDeposits.has(req.id)) {
+                      console.log(`[User] CLIENT NOTED: Deposit ID ${req.id} approved by admin. Amount: ${formatCurrency(req.amount)}. SERVER MUST UPDATE BALANCE.`);
+                      clientNotedApprovedDeposits.add(req.id);
+                  }
+              });
+          }, (error) => { if (depositHistoryBodyEl) depositHistoryBodyEl.innerHTML = `<tr><td colspan="5">Error loading deposits.</td></tr>`; });
+      }
+
+      function listenToWithdrawalRequests(uid) {
+          if (unsubscribeWithdrawalRequestsListener) unsubscribeWithdrawalRequestsListener();
+          const q = query(collection(db, "withdrawalRequests"), where("userId", "==", uid), orderBy("requestedAt", "desc"), limit(20));
+          unsubscribeWithdrawalRequestsListener = onSnapshot(q, (querySnapshot) => {
+              const requests = []; querySnapshot.forEach((doc) => { requests.push({ id: doc.id, ...doc.data() }); });
+              renderWithdrawalHistory(requests);
+              requests.forEach(req => {
+                  if (req.status === "rejected" && !clientNotedRejectedWithdrawals.has(req.id)) {
+                       console.log(`[User] CLIENT NOTED: Withdrawal ID ${req.id} rejected by admin. Amount: ${formatCurrency(req.amount)}. SERVER MUST REFUND IF PRE-DEDUCTED.`);
+                       clientNotedRejectedWithdrawals.add(req.id);
+                  }
+              });
+          }, (error) => { if (withdrawalHistoryBodyEl) withdrawalHistoryBodyEl.innerHTML = `<tr><td colspan="5">Error loading withdrawals.</td></tr>`; });
+      }
+
+      function initializeGameUI() { 
+          if (!numberBetsContainerEl) return; numberBetsContainerEl.innerHTML = ''; 
+          for (let i = 0; i <= 9; i++) {
+              const btn = document.createElement('button'); btn.classList.add('bet-btn', 'num', `num-${i}`);
+              btn.dataset.betType = "number"; btn.dataset.betValue = i.toString(); btn.textContent = i.toString();
+              numberBetsContainerEl.appendChild(btn);
+          }
+      }
+      function updateGameModeUI(gameMode, durationSeconds) { 
+          gameModeButtons.forEach(btn => {
+              btn.classList.toggle('active-by-admin', btn.dataset.mode === gameMode);
+              if (btn.dataset.mode === gameMode) {
+                  if(gameModeTitleEl) gameModeTitleEl.textContent = btn.dataset.modename || `Game Mode ${gameMode}`;
+                  if(currentGameSectionEl) { currentGameSectionEl.classList.remove('mode-1-active', 'mode-2-active'); currentGameSectionEl.classList.add(`mode-${gameMode}-active`); }
+                  if (!btn.classList.contains('active')) { gameModeButtons.forEach(b => b.classList.remove('active')); btn.classList.add('active'); currentlyViewedGameMode = gameMode; }
+              }
+          });
+      }
+      function startClientTimer(startTime, durationSeconds) { 
+          stopClientTimer(); 
+          gameTimerInterval = setInterval(() => {
+              const now = Date.now(); const endTime = startTime.getTime() + (durationSeconds * 1000);
+              let timeRemainingSeconds = Math.max(0, Math.floor((endTime - now) / 1000));
+              if (timeRemainingSeconds <= 0) { stopClientTimer(); if(timerDisplayEl) timerDisplayEl.textContent = "Ending..."; disableBetting(); return; }
+              const minutes = Math.floor(timeRemainingSeconds / 60); const seconds = timeRemainingSeconds % 60;
+              if(timerDisplayEl) timerDisplayEl.innerHTML = `${minutes.toString().padStart(2, '0')} : <span id="countdown-seconds">${seconds.toString().padStart(2, '0')}</span>`;
+              if (timeRemainingSeconds <= 5 && activePeriodData && activePeriodData.status === "betting") { disableBetting(); }
+          }, 1000);
+      }
+      function stopClientTimer() { if (gameTimerInterval) { clearInterval(gameTimerInterval); gameTimerInterval = null; } }
+      function enableBetting() { document.querySelectorAll('.betting-options .bet-btn').forEach(btn => btn.disabled = false); }
+      function disableBetting() { document.querySelectorAll('.betting-options .bet-btn').forEach(btn => btn.disabled = true); if(selectedBetButton) selectedBetButton.classList.remove('selected'); selectedBetButton = null; if(betModalEl && betModalEl.style.display !== "none") betModalEl.style.display = "none"; }
+      function renderGameHistory(historyData) { 
+          if (!gameHistoryBodyEl) return; gameHistoryBodyEl.innerHTML = ''; 
+          if (historyData.length === 0) { gameHistoryBodyEl.innerHTML = `<tr><td colspan="4">No history.</td></tr>`; return; }
+          historyData.forEach(round => {
+              const tr = gameHistoryBodyEl.insertRow(); tr.insertCell().textContent = round.periodId;
+              const details = getResultDetails(round.winningNumber); const numberCell = tr.insertCell();
+              numberCell.textContent = details.number; numberCell.classList.add('history-number');
+              if (details.colors.includes("Red")) numberCell.classList.add('num-color-red');
+              if (details.colors.includes("Green")) numberCell.classList.add('num-color-green');
+              if (details.colors.includes("Violet")) numberCell.classList.add('num-color-violet');
+              tr.insertCell().textContent = details.size; const colorCell = tr.insertCell();
+              const colorDotsContainer = document.createElement('div'); colorDotsContainer.classList.add('color-dots');
+              details.colors.forEach(colorName => {
+                  const dot = document.createElement('span');
+                  if (colorName === "Red") dot.classList.add('dot-red'); else if (colorName === "Green") dot.classList.add('dot-green'); else if (colorName === "Violet") dot.classList.add('dot-violet');
+                  colorDotsContainer.appendChild(dot);
+              }); colorCell.appendChild(colorDotsContainer);
+          });
+      }
+      function updatePreviousResultsDisplay(historyData) { 
+          prevResultEls.forEach((el, index) => {
+              if (historyData[index] && historyData[index].winningNumber !== undefined && historyData[index].winningNumber !== null) {
+                  const num = historyData[index].winningNumber; el.textContent = num; el.className = ''; el.classList.add(`prev-res-${num}`);
+              } else { el.textContent = '?'; el.className = ''; }
+          });
+      }
+      function updateMyBetsDisplay(bets) { 
+          if (!myBetsBodyEl || !myBetsTableEl || !myBetsPlaceholderEl) return; myBetsBodyEl.innerHTML = ''; 
+          if (bets.length === 0) { myBetsTableEl.style.display = "none"; myBetsPlaceholderEl.style.display = "block"; myBetsPlaceholderEl.textContent = "No bets this round."; return; }
+          myBetsTableEl.style.display = "table"; myBetsPlaceholderEl.style.display = "none";
+          bets.forEach(bet => {
+              const tr = myBetsBodyEl.insertRow(); tr.insertCell().textContent = bet.periodId;
+              tr.insertCell().textContent = bet.betType.charAt(0).toUpperCase() + bet.betType.slice(1);
+              tr.insertCell().textContent = bet.betValue; tr.insertCell().textContent = formatCurrency(bet.amount);
+              const statusCell = tr.insertCell(); statusCell.textContent = bet.status.charAt(0).toUpperCase() + bet.status.slice(1);
+              if (bet.status === "won") statusCell.style.color = "#2ecc71"; else if (bet.status === "lost") statusCell.style.color = "#e74c3c";
+              tr.insertCell().textContent = (bet.status === "won" && bet.payout > 0) ? formatCurrency(bet.payout) : "---";
+          });
+      }
+      function renderDepositHistory(requests) { 
+          if (!depositHistoryBodyEl) return; depositHistoryBodyEl.innerHTML = '';
+          if (requests.length === 0) { depositHistoryBodyEl.innerHTML = `<tr><td colspan="5">No deposit history.</td></tr>`; return; }
+          requests.forEach(req => {
+              const tr = depositHistoryBodyEl.insertRow(); tr.insertCell().textContent = formatDate(req.requestedAt);
+              tr.insertCell().textContent = formatCurrency(req.amount); tr.insertCell().textContent = req.transactionId || 'N/A';
+              const statusCell = tr.insertCell(); statusCell.textContent = req.status.charAt(0).toUpperCase() + req.status.slice(1); statusCell.classList.add(`status-${req.status}`);
+              tr.insertCell().textContent = req.remarks || '---';
+          });
+      }
+      function renderWithdrawalHistory(requests) { 
+          if (!withdrawalHistoryBodyEl) return; withdrawalHistoryBodyEl.innerHTML = '';
+          if (requests.length === 0) { withdrawalHistoryBodyEl.innerHTML = `<tr><td colspan="5">No withdrawal history.</td></tr>`; return; }
+          requests.forEach(req => {
+              const tr = withdrawalHistoryBodyEl.insertRow(); tr.insertCell().textContent = formatDate(req.requestedAt);
+              tr.insertCell().textContent = formatCurrency(req.amount); tr.insertCell().textContent = req.upiId || 'N/A';
+              const statusCell = tr.insertCell(); statusCell.textContent = req.status.charAt(0).toUpperCase() + req.status.slice(1); statusCell.classList.add(`status-${req.status}`);
+              tr.insertCell().textContent = req.remarks || '---';
+          });
+      }
+      function setupBetButtonListeners() { 
+          document.querySelectorAll('.betting-options .bet-btn').forEach(button => { button.removeEventListener('click', handleBetButtonClick); button.addEventListener('click', handleBetButtonClick); });
+      }
+      function handleBetButtonClick(event) { 
+          if (!currentUser || !activePeriodData || activePeriodData.status !== "betting" || event.currentTarget.disabled) { alert("Betting closed."); return; }
+          const now = Date.now(); const endTime = activePeriodData.startTime.toDate().getTime() + (activePeriodData.gameModeDuration * 1000);
+          let timeRemainingSeconds = Math.max(0, Math.floor((endTime - now) / 1000));
+          if (timeRemainingSeconds <= 5) { alert("Betting closed (round ending)."); disableBetting(); return; }
+          const buttonEl = event.currentTarget; const betType = buttonEl.dataset.betType; const betValue = buttonEl.dataset.betValue;
+          if (selectedBetButton) selectedBetButton.classList.remove('selected'); buttonEl.classList.add('selected'); selectedBetButton = buttonEl;
+          openBetModal(betType, betValue);
+      }
+      function openBetModal(betType, betValue) { 
+          if (!betModalEl || !betModalTypeValueEl || !betAmountInputEl || !betModalErrorEl) return;
+          betModalTypeValueEl.textContent = `${betType.charAt(0).toUpperCase() + betType.slice(1)}: ${betValue}`;
+          betAmountInputEl.value = ""; betModalErrorEl.textContent = ""; betModalEl.style.display = "flex"; betAmountInputEl.focus();
+      }
+
+      async function processBetStatusUpdatesForRound_ClientSide(roundData) {
+          if (!currentUser || !roundData || roundData.status !== "ended" || roundData.winningNumber === null || roundData.winningNumber === undefined) {
+              return;
+          }
+          if (processedPeriodBetStatusUpdatesClientSide.has(roundData.periodId)) {
+              console.log(`[User] Client-side bet status update for Period ID: ${roundData.periodId} already run this session.`);
+              return;
+          }
+          console.log(`[User] CLIENT-SIDE: Processing bet statuses for Period ID: ${roundData.periodId}, User: ${currentUser.uid}, WinNum: ${roundData.winningNumber}`);
+          const resultDetails = getResultDetails(roundData.winningNumber); 
+          const betsQuery = query(collection(db, "bets"), 
+                                  where("userId", "==", currentUser.uid), 
+                                  where("periodId", "==", roundData.periodId),
+                                  where("status", "==", "pending"));
+          try {
+              const querySnapshot = await getDocs(betsQuery);
+              if (querySnapshot.empty) { return; } 
+              const batch = writeBatch(db);
+              querySnapshot.forEach(docSnap => {
+                  const bet = { id: docSnap.id, ...docSnap.data() };
+                  let isWin = false; let calculatedPayout = 0;
+                  if (bet.betType === "number" && parseInt(bet.betValue) === resultDetails.number) { isWin = true; calculatedPayout = bet.amount * payoutSettings.number; } 
+                  else if (bet.betType === "size" && bet.betValue.toUpperCase() === resultDetails.size) { isWin = true; calculatedPayout = bet.amount * payoutSettings.size; } 
+                  else if (bet.betType === "color") {
+                      if (bet.betValue === "Violet" && resultDetails.colors.includes("Violet")) { isWin = true; calculatedPayout = bet.amount * payoutSettings.violet; } 
+                      else if (bet.betValue === "Green" && resultDetails.colors.includes("Green")) { isWin = true; calculatedPayout = bet.amount * (resultDetails.number === 5 && payoutSettings.greenOnFive ? payoutSettings.greenOnFive : payoutSettings.color); } 
+                      else if (bet.betValue === "Red" && resultDetails.colors.includes("Red")) { isWin = true; calculatedPayout = bet.amount * (resultDetails.number === 0 && payoutSettings.redOnZero ? payoutSettings.redOnZero : payoutSettings.color); }
+                  }
+                  if (isWin) { batch.update(doc(db, "bets", bet.id), { status: "won", payout: calculatedPayout }); } 
+                  else { batch.update(doc(db, "bets", bet.id), { status: "lost", payout: 0 }); }
+              });
+              await batch.commit();
+              console.log(`[User] CLIENT-SIDE: Bet status update batch committed for P${roundData.periodId} U:${currentUser.uid}. SERVER IS RESPONSIBLE FOR WALLET UPDATES.`);
+              processedPeriodBetStatusUpdatesClientSide.add(roundData.periodId); 
+          } catch (error) {
+              console.error(`[User] CLIENT-SIDE Error updating bet statuses P${roundData.periodId}:`, error);
+          }
+      }
+    </script>
+</body>
+</html>

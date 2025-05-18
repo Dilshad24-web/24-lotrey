@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Colour Prediction (Client-Side Ops)</title>
+    <style>
+        /* CSS (Same as previous, with additions for new game display section) */
+        body { font-family: Arial, sans-serif; background-color: #1a1a1a; color: #f0f0f0; margin: 0; padding: 20px; }
+        h2, h3, h4 { color: #FFD700; margin-top: 0; }
+        .admin-container { max-width: 1200px; margin: auto; }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #4a4a4a;}
+
+        .admin-section {
+            border: 1px solid #444; padding: 20px; margin-bottom: 25px;
+            border-radius: 8px; background-color: #2c2c2c; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        .admin-section h4 { border-bottom: 1px solid #FFD700; padding-bottom: 8px; margin-bottom: 15px; }
+
+        label { display: block; margin-top: 12px; margin-bottom: 6px; font-weight: bold; font-size: 0.95em; color: #ccc;}
+        input[type="text"], input[type="number"], input[type="url"], input[type="password"], select, textarea {
+            width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 5px;
+            border: 1px solid #555; background-color: #383838; color: #fff; box-sizing: border-box;
+            font-size: 0.9em;
+        }
+        input:focus, select:focus, textarea:focus { border-color: #FFD700; outline: none; }
+
+        button {
+            padding: 10px 18px; background-color: #FFD700; color: #333; border: none;
+            border-radius: 5px; cursor: pointer; font-weight: bold; margin-top:10px; font-size: 0.9em;
+            transition: background-color 0.2s ease;
+        }
+        button:hover:not(:disabled) { background-color: #f0c000; }
+        button:disabled { background-color: #555; color: #888; cursor: not-allowed; }
+
+        .action-buttons button { margin-right: 10px; margin-bottom: 5px; }
+        .action-buttons button.reject-btn, .logout-btn-admin, button.ban-btn { background-color: #e74c3c; color: white; }
+        .action-buttons button.reject-btn:hover:not(:disabled), .logout-btn-admin:hover:not(:disabled), button.ban-btn:hover:not(:disabled) { background-color: #c0392b; }
+        button.unban-btn { background-color: #2ecc71; color: white; }
+        button.unban-btn:hover:not(:disabled) { background-color: #27ae60; }
+        button.manual-result-btn { background-color: #3498db; color:white;}
+        button.manual-result-btn:hover:not(:disabled) { background-color: #2980b9;}
+
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.9em; margin-top:15px;}
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #4a4a4a; word-wrap:break-word; }
+        thead { background-color: #3a3a3a; color: #FFD700; }
+        tbody tr:hover { background-color: #333; }
+        td img { max-width: 50px; height: auto; vertical-align: middle; }
+
+        .auth-status-message { color: #ccc; font-size: 0.9em; margin-top:10px; min-height: 1em;}
+        .error-message { color: #e74c3c; }
+        .auto-mode-switch { display: flex; align-items: center; margin-top: 10px; margin-bottom: 15px; }
+        .auto-mode-switch label { margin-right: 10px; margin-bottom:0; font-weight: normal; color: #f0f0f0; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #666; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 4px; bottom: 4px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #FFD700; }
+        input:checked + .slider:before { transform: translateX(26px); }
+
+        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.7); justify-content: center; align-items: center; }
+        .modal-content { background-color: #3e3e3e; margin: auto; padding: 25px; border: 1px solid #777; width: 90%; max-width: 500px; border-radius: 8px; color: #f0f0f0; box-shadow: 0 5px 20px rgba(0,0,0,0.5); }
+        .modal-content h3 { margin-top: 0; color: #FFD700; text-align: center; margin-bottom: 20px; }
+        .modal-content fieldset { border: 1px solid #555; border-radius: 5px; padding: 10px 15px; margin-bottom: 15px; }
+        .modal-content legend { color: #FFD700; font-weight: bold; padding: 0 5px; }
+        .modal-buttons { text-align: right; margin-top: 20px; }
+        .modal-buttons button { margin-left: 10px; }
+        .modal-message { font-size: 0.9em; margin-bottom: 10px; min-height: 1em; text-align: center; }
+        .note { font-size: 0.8em; color: #aaa; margin-top: 5px; }
+
+        .bet-totals-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 10px;}
+        .total-item { background-color: #383838; padding: 10px; border-radius: 5px; text-align: center;}
+        .total-item strong { color: #FFD700; display: block; font-size: 1.2em; margin-bottom: 5px;}
+
+        /* Styles for Admin Current Game Display */
+        .admin-current-game-display { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        .admin-current-game-display.mode-1-active { background-color: #FFEB3B; color: #333;}
+        .admin-current-game-display.mode-2-active { background-color: #FFD700; color: #333;}
+        .admin-game-title-previous h5 { margin: 0 0 5px 0; font-size: 14px; font-weight: bold;}
+        .admin-previous-results { display: flex; }
+        .admin-previous-results span { width: 20px; height: 20px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-weight: bold; color: white; margin-right: 4px; font-size: 10px; border: 1px solid rgba(0,0,0,0.2);}
+        .admin-timer-period { text-align: right; }
+        .admin-timer-period p { margin: 0 0 5px 0; font-size: 10px; }
+        .admin-timer-display { font-size: 20px;font-weight: bold;background-color: #333;color: white;padding: 5px 8px;border-radius: 5px;display: inline-block;}
+        .admin-timer-display span { width: 20px;display: inline-block;text-align: center;} 
+        .admin-period-id { font-size: 10px;color: #555;}
+
+        /* Previous result colors (same as user client) */
+        .admin-prev-res-0 {background: radial-gradient(circle, #BA55D3 50%, #e74c3c 55%);}
+        .admin-prev-res-1 {background-color: #2ecc71;} .admin-prev-res-2 {background-color: #e74c3c;}
+        .admin-prev-res-3 {background-color: #2ecc71;} .admin-prev-res-4 {background-color: #e74c3c;}
+        .admin-prev-res-5 {background: radial-gradient(circle, #BA55D3 50%, #2ecc71 55%);}
+        .admin-prev-res-6 {background-color: #e74c3c;} .admin-prev-res-7 {background-color: #2ecc71;}
+        .admin-prev-res-8 {background-color: #e74c3c;} .admin-prev-res-9 {background-color: #2ecc71;}
+
+    </style>
+</head>
+<body>
+    <div class="admin-container">
+        <div class="admin-header">
+            <h2>Admin Panel</h2>
+            <button id="logout-btn-admin" class="logout-btn-admin" style="display:none;">Logout Admin</button>
+        </div>
+
+        <div id="auth-screen-admin" class="admin-section" style="display:block;">
+            <h3>Admin Login</h3>
+            <label for="admin-login-mobile">Admin Mobile:</label>
+            <input type="tel" id="admin-login-mobile" placeholder="Admin Mobile Number (10 digits)" maxlength="10">
+            <label for="admin-login-password">Admin Password:</label>
+            <input type="password" id="admin-login-password" placeholder="Admin Password">
+            <button id="admin-login-btn">Login as Admin</button>
+            <div id="admin-auth-status" class="auth-status-message"></div>
+        </div>
+
+        <div id="admin-controls-container" style="display:none;">
+            <p style="margin-bottom: 20px; font-size: 1.1em;">Welcome, Admin <strong id="admin-email-display" style="color:#FFD700;"></strong>!</p>
+            
+            <!-- NEW: Current Game Display Section -->
+            <div class="admin-section">
+                <h4>Live Game Monitor (Read-Only)</h4>
+                <div id="admin-current-game-display-section" class="admin-current-game-display mode-1-active">
+                    <div class="admin-game-title-previous">
+                        <h5 id="admin-game-mode-title-display">Win Go 1 Min</h5>
+                        <div class="admin-previous-results">
+                            <span id="admin-prev-res-1">?</span>
+                            <span id="admin-prev-res-2">?</span>
+                            <span id="admin-prev-res-3">?</span>
+                            <span id="admin-prev-res-4">?</span>
+                        </div>
+                    </div>
+                    <div class="admin-timer-period">
+                        <p>Time Remaining</p>
+                        <div class="admin-timer-display" id="admin-timer-display-live">00 : <span id="admin-countdown-seconds-live">00</span></div>
+                        <p class="admin-period-id" id="admin-current-period-id-live">Fetching...</p>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="admin-section">
+                <h4>Game Round Control</h4>
+                <!-- ... (rest of the game round control same as before) ... -->
+                <div class="auto-mode-switch">
+                    <label for="admin-auto-mode-toggle">Auto Mode:</label>
+                    <label class="switch">
+                        <input type="checkbox" id="admin-auto-mode-toggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <label for="admin-current-period">Current Active Period ID (for control):</label><input type="text" id="admin-current-period" readonly style="background-color:#444;">
+                <label for="admin-game-mode-select">Game Mode for New Round:</label>
+                <select id="admin-game-mode-select">
+                    <option value="1" data-duration="60">Win Go 1 Min</option>
+                    <option value="2" data-duration="120">Win Go 2 Min</option>
+                </select>
+                <label for="admin-next-number">Set Winning Number for Current Period (0-9, -1 for random):</label>
+                <input type="number" id="admin-next-number" value="-1" min="-1" max="9">
+                <button id="admin-end-round-btn" disabled>End Round & Post Auto Result</button>
+                <button id="admin-start-new-round-btn">Start New Round</button>
+            </div>
+
+            <!-- ... (Manual Result, Bet Totals, Site Settings, Requests, User Management sections same as before) ... -->
+            <div class="admin-section">
+                <h4>Manual Result Publishing</h4>
+                <p class="note">This will forcefully end the current betting round (if any) with the selected result.</p>
+                <label for="manual-result-color">Select Color:</label>
+                <select id="manual-result-color"> <option value="Green">Green</option> <option value="Violet">Violet</option> <option value="Red">Red</option> </select>
+                <label for="manual-result-number">Select Number (0-9):</label> <input type="number" id="manual-result-number" min="0" max="9" value="0">
+                <label for="manual-result-size">Select Size:</label> <select id="manual-result-size"> <option value="Small">Small (0-4)</option> <option value="Big">Big (5-9)</option> </select>
+                <div class="note">Ensure the number and size are consistent. The number takes precedence for payouts.</div>
+                <button id="admin-publish-manual-result-btn" class="manual-result-btn">Publish Manual Result</button>
+                <div id="manual-result-status" class="auth-status-message"></div>
+            </div>
+            <div class="admin-section">
+                <h4>Current Round Bet Totals (Active Betting Period Only)</h4>
+                <button id="admin-refresh-bet-totals-btn">Refresh Bet Totals</button>
+                <div id="admin-bet-totals-status" class="auth-status-message" style="margin-top: 5px;">Click refresh to load totals.</div>
+                <div id="admin-bet-totals-display" class="bet-totals-grid" style="margin-top:15px;"></div>
+            </div>
+            <div class="admin-section"><h4>Site & Game Settings</h4> <fieldset> <legend>Deposit Settings</legend> <label for="admin-deposit-qr-url">QR Code Image URL:</label><input type="url" id="admin-deposit-qr-url" placeholder="https://example.com/qr.png"> <label for="admin-deposit-instructions">Deposit Instructions:</label><textarea id="admin-deposit-instructions" placeholder="Instructions for deposit..." rows="3"></textarea> <button id="admin-save-deposit-settings-btn">Save Deposit Settings</button> </fieldset> <fieldset style="margin-top:20px;"> <legend>Payout Multipliers</legend> <label for="admin-payout-number">Number Bet (e.g., 9 for 9x):</label><input type="number" id="admin-payout-number" step="0.1"> <label for="admin-payout-size">Size Bet (e.g., 1.9 for 1.9x):</label><input type="number" id="admin-payout-size" step="0.1"> <label for="admin-payout-color">Color Bet (Green/Red, e.g., 1.9 for 1.9x):</label><input type="number" id="admin-payout-color" step="0.1"> <label for="admin-payout-violet">Violet Bet (e.g., 4.5 for 4.5x):</label><input type="number" id="admin-payout-violet" step="0.1"> <button id="admin-save-payout-multipliers-btn">Save Payout Settings</button> </fieldset> </div>
+            <div class="admin-section"><h4>Pending Deposit Requests</h4> <table id="admin-deposit-requests-table"><thead><tr><th>User</th><th>Amount</th><th>Txn ID</th><th>QR Used</th><th>Time</th><th>Action</th></tr></thead><tbody id="admin-deposit-requests-body"></tbody></table> </div>
+            <div class="admin-section"><h4>Pending Withdrawal Requests</h4> <table id="admin-withdrawal-requests-table"><thead><tr><th>User</th><th>UPI</th><th>Amount</th><th>Time</th><th>Action</th></tr></thead><tbody id="admin-withdrawal-requests-body"></tbody></table> </div>
+            <div class="admin-section"><h4>User Management</h4> <table id="admin-users-table"><thead><tr><th>Name</th><th>Mobile</th><th>Wallet</th><th>Status</th><th>Actions</th></tr></thead><tbody id="admin-users-body"></tbody></table> </div>
+
+        </div>
+    </div>
+
+    <!-- User Edit Modal (same as before) -->
+    <div id="user-edit-modal" class="modal">
+        <div class="modal-content">
+            <h3>Edit User: <span id="edit-user-id-display"></span></h3>
+            <input type="hidden" id="edit-user-id-input">
+            <fieldset> <legend>User Info</legend> <label for="edit-user-name">Display Name:</label> <input type="text" id="edit-user-name"> <label for="edit-user-mobile">Mobile Number (Read-only):</label> <input type="text" id="edit-user-mobile" readonly style="background-color:#444;"> </fieldset>
+            <fieldset> <legend>Wallet</legend> <label for="edit-user-balance">Set Wallet Balance (₹):</label> <input type="number" id="edit-user-balance" step="0.01"> <div class="note">This directly sets the balance. Use with extreme caution.</div> </fieldset>
+            <fieldset> <legend>Password</legend> <label for="edit-user-new-password">New Password (Optional):</label> <input type="password" id="edit-user-new-password" placeholder="Leave blank to keep current"> <div class="note">Password change requires manual update in Firebase Auth.</div> </fieldset>
+            <div class="modal-message" id="user-edit-modal-message"></div>
+            <div class="modal-buttons"> <button id="user-edit-modal-cancel-btn" class="reject-btn">Cancel</button> <button id="user-edit-modal-save-btn">Save Changes</button> </div>
+        </div>
+    </div>
+
+
+    <script type="module">
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+      import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-auth.js";
+      import { getFirestore, doc, getDoc, setDoc, updateDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp, writeBatch, runTransaction, increment, where, Timestamp, addDoc, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore.js";
+      // No Cloud Functions import
+
+      const firebaseConfig = { /* ... same ... */
+        apiKey: "AIzaSyDOjP6W7A1sZSoquYH8SIRUnN6TSPE-ovI", 
+        authDomain: "color-prediction-2ca40.firebaseapp.com",
+        databaseURL: "https://color-prediction-2ca40-default-rtdb.firebaseio.com",
+        projectId: "color-prediction-2ca40",
+        storageBucket: "color-prediction-2ca40.appspot.com",
+        messagingSenderId: "1055872110258",
+        appId: "1:1055872110258:web:c3276ac642b9fd13c243ab",
+        measurementId: "G-RSGC9JNLDJ"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      const FAKE_EMAIL_DOMAIN = "@colorpred.game";
+      const ADMIN_MOBILE_NUMBER = "6388654375"; 
+      const ADMIN_EXPECTED_EMAIL = `${ADMIN_MOBILE_NUMBER}${FAKE_EMAIL_DOMAIN}`;
+
+      // Declare variables for DOM elements globally
+      let authScreenAdminEl, adminLoginMobileEl, adminLoginPasswordEl, adminLoginBtn, adminAuthStatusEl,
+          adminControlsContainerEl, adminEmailDisplayEl, logoutBtnAdmin, adminCurrentPeriodEl,
+          adminGameModeSelectEl, adminNextNumberInput, adminEndRoundBtn, adminStartNewRoundBtn,
+          adminDepositQrUrlEl, adminDepositInstructionsEl, adminSaveDepositSettingsBtn,
+          adminDepositRequestsBodyEl, adminWithdrawalRequestsBodyEl, adminUsersBodyEl,
+          adminPayoutNumberEl, adminPayoutSizeEl, adminPayoutColorEl, adminPayoutVioletEl,
+          adminSavePayoutMultipliersBtn, adminAutoModeToggleEl, 
+          adminPublishManualResultBtn, manualResultColorEl, manualResultNumberEl, manualResultSizeEl, manualResultStatusEl,
+          adminRefreshBetTotalsBtn, adminBetTotalsStatusEl, adminBetTotalsDisplayEl,
+          userEditModalEl, editUserIdDisplayEl, editUserIdInputEl, editUserNameEl,
+          editUserMobileEl, editUserBalanceEl, editUserNewPasswordEl,
+          userEditModalMessageEl, userEditModalCancelBtn, userEditModalSaveBtn,
+          // NEW DOM elements for admin game display
+          adminGameModeTitleDisplayEl, adminTimerDisplayLiveEl, adminCountdownSecondsLiveEl,
+          adminCurrentPeriodIdLiveEl, adminCurrentGameDisplaySectionEl, adminPrevResDisplayEls = [];
+
+
+      let currentAdminUser = null;
+      let activePeriodDataAdmin = null; // This will be used for both control and display
+      let adminGameTimerInterval = null; // Timer for admin panel display
+      let autoModeSettingsAdmin = { isEnabled: false };
+      let unsubscribeAdminDeposits, unsubscribeAdminWithdrawals, unsubscribeAdminUsers, unsubscribePayoutSettingsAdmin, unsubscribeDepositSettingsAdmin, unsubscribeActivePeriodAdmin, unsubscribeAutoModeSettingsAdmin,
+          unsubscribeAdminGameHistoryListener; // Listener for previous results display
+      
+      let autoStartRoundTimeoutAdmin = null;
+      let autoEndRoundTimeoutAdmin = null;
+      const AUTO_ROUND_START_DELAY = 5000; 
+      const AUTO_ROUND_END_BUFFER = 2000; 
+
+      function formatCurrency(amount) { return `₹ ${Number(amount || 0).toFixed(2)}`; }
+      function clearAdminListeners() { 
+          if(unsubscribeAdminDeposits) unsubscribeAdminDeposits(); if(unsubscribeAdminWithdrawals) unsubscribeAdminWithdrawals(); if(unsubscribeAdminUsers) unsubscribeAdminUsers(); if(unsubscribePayoutSettingsAdmin) unsubscribePayoutSettingsAdmin(); if(unsubscribeDepositSettingsAdmin) unsubscribeDepositSettingsAdmin(); if(unsubscribeActivePeriodAdmin) unsubscribeActivePeriodAdmin(); if(unsubscribeAutoModeSettingsAdmin) unsubscribeAutoModeSettingsAdmin(); if(unsubscribeAdminGameHistoryListener) unsubscribeAdminGameHistoryListener();
+          if(autoStartRoundTimeoutAdmin) clearTimeout(autoStartRoundTimeoutAdmin); if(autoEndRoundTimeoutAdmin) clearTimeout(autoEndRoundTimeoutAdmin); if(adminGameTimerInterval) clearInterval(adminGameTimerInterval);
+          autoStartRoundTimeoutAdmin = null; autoEndRoundTimeoutAdmin = null; adminGameTimerInterval = null;
+      }
+
+      document.addEventListener('DOMContentLoaded', () => {
+          // Assign DOM elements
+          authScreenAdminEl = document.getElementById('auth-screen-admin'); adminLoginMobileEl = document.getElementById('admin-login-mobile'); adminLoginPasswordEl = document.getElementById('admin-login-password'); adminLoginBtn = document.getElementById('admin-login-btn'); adminAuthStatusEl = document.getElementById('admin-auth-status'); adminControlsContainerEl = document.getElementById('admin-controls-container'); adminEmailDisplayEl = document.getElementById('admin-email-display'); logoutBtnAdmin = document.getElementById('logout-btn-admin'); adminCurrentPeriodEl = document.getElementById('admin-current-period'); adminGameModeSelectEl = document.getElementById('admin-game-mode-select'); adminNextNumberInput = document.getElementById('admin-next-number'); adminEndRoundBtn = document.getElementById('admin-end-round-btn'); adminStartNewRoundBtn = document.getElementById('admin-start-new-round-btn'); adminDepositQrUrlEl = document.getElementById('admin-deposit-qr-url'); adminDepositInstructionsEl = document.getElementById('admin-deposit-instructions'); adminSaveDepositSettingsBtn = document.getElementById('admin-save-deposit-settings-btn'); adminDepositRequestsBodyEl = document.getElementById('admin-deposit-requests-body'); adminWithdrawalRequestsBodyEl = document.getElementById('admin-withdrawal-requests-body'); adminUsersBodyEl = document.getElementById('admin-users-body'); adminPayoutNumberEl = document.getElementById('admin-payout-number'); adminPayoutSizeEl = document.getElementById('admin-payout-size'); adminPayoutColorEl = document.getElementById('admin-payout-color'); adminPayoutVioletEl = document.getElementById('admin-payout-violet'); adminSavePayoutMultipliersBtn = document.getElementById('admin-save-payout-multipliers-btn'); adminAutoModeToggleEl = document.getElementById('admin-auto-mode-toggle'); adminPublishManualResultBtn = document.getElementById('admin-publish-manual-result-btn'); manualResultColorEl = document.getElementById('manual-result-color'); manualResultNumberEl = document.getElementById('manual-result-number'); manualResultSizeEl = document.getElementById('manual-result-size'); manualResultStatusEl = document.getElementById('manual-result-status'); adminRefreshBetTotalsBtn = document.getElementById('admin-refresh-bet-totals-btn'); adminBetTotalsStatusEl = document.getElementById('admin-bet-totals-status'); adminBetTotalsDisplayEl = document.getElementById('admin-bet-totals-display'); userEditModalEl = document.getElementById('user-edit-modal'); editUserIdDisplayEl = document.getElementById('edit-user-id-display'); editUserIdInputEl = document.getElementById('edit-user-id-input'); editUserNameEl = document.getElementById('edit-user-name'); editUserMobileEl = document.getElementById('edit-user-mobile'); editUserBalanceEl = document.getElementById('edit-user-balance'); editUserNewPasswordEl = document.getElementById('edit-user-new-password'); userEditModalMessageEl = document.getElementById('user-edit-modal-message'); userEditModalCancelBtn = document.getElementById('user-edit-modal-cancel-btn'); userEditModalSaveBtn = document.getElementById('user-edit-modal-save-btn');
+          
+          // New display elements
+          adminGameModeTitleDisplayEl = document.getElementById('admin-game-mode-title-display');
+          adminTimerDisplayLiveEl = document.getElementById('admin-timer-display-live');
+          adminCountdownSecondsLiveEl = document.getElementById('admin-countdown-seconds-live');
+          adminCurrentPeriodIdLiveEl = document.getElementById('admin-current-period-id-live');
+          adminCurrentGameDisplaySectionEl = document.getElementById('admin-current-game-display-section');
+          adminPrevResDisplayEls = [document.getElementById('admin-prev-res-1'), document.getElementById('admin-prev-res-2'), document.getElementById('admin-prev-res-3'), document.getElementById('admin-prev-res-4')];
+
+
+          // Attach listeners
+          if (adminLoginBtn) { adminLoginBtn.addEventListener('click', async () => { const mobile = adminLoginMobileEl.value.trim(); const password = adminLoginPasswordEl.value; if (!mobile || mobile.length !== 10 || !password) { if(adminAuthStatusEl) adminAuthStatusEl.textContent = "Valid admin mobile and password required."; return; } const adminEmailInput = `${mobile}${FAKE_EMAIL_DOMAIN}`; if (adminEmailInput !== ADMIN_EXPECTED_EMAIL) { if(adminAuthStatusEl) adminAuthStatusEl.textContent = "Mobile not registered as admin."; return; } if(adminAuthStatusEl) adminAuthStatusEl.textContent = "Logging in..."; try { await signInWithEmailAndPassword(auth, adminEmailInput, password); } catch (error) { if(adminAuthStatusEl) adminAuthStatusEl.textContent = `Admin login failed: ${error.message.replace("Firebase: ","")}`; } }); } else { console.error("ERROR: adminLoginBtn element not found!"); }
+          if(userEditModalCancelBtn) userEditModalCancelBtn.addEventListener('click', () => { if(userEditModalEl) userEditModalEl.style.display = 'none';});
+          if(userEditModalSaveBtn) userEditModalSaveBtn.addEventListener('click', saveUserEditsDirectly);
+          if(adminPublishManualResultBtn) adminPublishManualResultBtn.addEventListener('click', publishManualResultDirectly);
+          if(adminRefreshBetTotalsBtn) adminRefreshBetTotalsBtn.addEventListener('click', refreshBetTotalsDirectly);
+      });
+
+      onAuthStateChanged(auth, async (user) => { /* ... same auth logic ... */ 
+          clearAdminListeners();
+          if (user) {
+              const freshUser = auth.currentUser; 
+              if (freshUser && freshUser.email === ADMIN_EXPECTED_EMAIL) {
+                  currentAdminUser = freshUser;
+                  if(adminEmailDisplayEl) adminEmailDisplayEl.textContent = ADMIN_MOBILE_NUMBER; 
+                  if(authScreenAdminEl) authScreenAdminEl.style.display = 'none'; if(adminControlsContainerEl) adminControlsContainerEl.style.display = 'block'; if(logoutBtnAdmin) logoutBtnAdmin.style.display = 'block'; if(adminAuthStatusEl) adminAuthStatusEl.textContent = "";
+                  if(logoutBtnAdmin) logoutBtnAdmin.onclick = async () => { await signOut(auth); }; if(adminStartNewRoundBtn) adminStartNewRoundBtn.onclick = adminStartNewRound; if(adminEndRoundBtn) adminEndRoundBtn.onclick = adminEndRoundAndProcessDirectly;  if(adminSaveDepositSettingsBtn) adminSaveDepositSettingsBtn.onclick = adminSaveDepositSettings; if(adminSavePayoutMultipliersBtn) adminSavePayoutMultipliersBtn.onclick = adminSavePayoutSettings; if(adminAutoModeToggleEl) adminAutoModeToggleEl.onchange = handleAutoModeToggle;
+                  loadAdminData();
+              } else { if (freshUser) { if(adminAuthStatusEl) adminAuthStatusEl.textContent = "Access Denied."; await signOut(auth); } currentAdminUser = null; if(authScreenAdminEl) authScreenAdminEl.style.display = 'block'; if(adminControlsContainerEl) adminControlsContainerEl.style.display = 'none'; if(logoutBtnAdmin) logoutBtnAdmin.style.display = 'none'; if(adminAuthStatusEl) adminAuthStatusEl.textContent = freshUser ? adminAuthStatusEl.textContent : "Login with admin credentials."; }
+          } else { currentAdminUser = null; if(authScreenAdminEl) authScreenAdminEl.style.display = 'block'; if(adminControlsContainerEl) adminControlsContainerEl.style.display = 'none'; if(logoutBtnAdmin) logoutBtnAdmin.style.display = 'none'; if(adminAuthStatusEl) adminAuthStatusEl.textContent = "Login with admin credentials."; }
+      });
+      
+      function loadAdminData() { if (!currentAdminUser) return; listenToActivePeriodAdmin(); listenToDepositSettingsAdmin(); listenToPayoutSettingsAdmin(); listenToAdminDepositRequests(); listenToAdminWithdrawalRequests(); listenToAdminUsers(); listenToAutoModeSettingsAdmin(); /* listenToAdminGameHistory(); // Call if you implement full prev result history */ }
+      
+      // MODIFIED: listenToActivePeriodAdmin now also updates the live game display
+      function listenToActivePeriodAdmin() {
+          if(unsubscribeActivePeriodAdmin) unsubscribeActivePeriodAdmin();
+          const activePeriodRef = doc(db, "gameConfig", "activePeriod");
+          unsubscribeActivePeriodAdmin = onSnapshot(activePeriodRef, (docSnap) => {
+              if (docSnap.exists()) {
+                  activePeriodDataAdmin = { ...docSnap.data(), id: docSnap.id };
+                  // Update control elements
+                  if(adminCurrentPeriodEl) adminCurrentPeriodEl.value = activePeriodDataAdmin.periodId || "N/A";
+                  if(adminEndRoundBtn) adminEndRoundBtn.disabled = !(activePeriodDataAdmin && activePeriodDataAdmin.status === "betting");
+                  if(adminStartNewRoundBtn) adminStartNewRoundBtn.disabled = !((activePeriodDataAdmin && activePeriodDataAdmin.status === "ended") || !activePeriodDataAdmin || !docSnap.exists());
+                  if (activePeriodDataAdmin.gameMode && adminGameModeSelectEl) adminGameModeSelectEl.value = activePeriodDataAdmin.gameMode;
+
+                  // Update live game display elements
+                  if (adminCurrentPeriodIdLiveEl) adminCurrentPeriodIdLiveEl.textContent = `Period: ${activePeriodDataAdmin.periodId}`;
+                  if (adminGameModeTitleDisplayEl) {
+                      const modeOption = adminGameModeSelectEl.querySelector(`option[value="${activePeriodDataAdmin.gameMode}"]`);
+                      adminGameModeTitleDisplayEl.textContent = modeOption ? modeOption.textContent : `Game Mode ${activePeriodDataAdmin.gameMode}`;
+                  }
+                  if (adminCurrentGameDisplaySectionEl) {
+                      adminCurrentGameDisplaySectionEl.className = 'admin-current-game-display'; // Reset classes
+                      adminCurrentGameDisplaySectionEl.classList.add(`mode-${activePeriodDataAdmin.gameMode}-active`);
+                  }
+
+                  if (activePeriodDataAdmin.status === "betting" && activePeriodDataAdmin.startTime) {
+                      adminStartClientTimer(activePeriodDataAdmin.startTime.toDate(), activePeriodDataAdmin.gameModeDuration);
+                  } else if (activePeriodDataAdmin.status === "ended" && activePeriodDataAdmin.winningNumber !== null) {
+                      adminStopClientTimer();
+                      if(adminTimerDisplayLiveEl) adminTimerDisplayLiveEl.innerHTML = `Result: <strong style="color: ${adminGetResultDetails(activePeriodDataAdmin.winningNumber).colors[0] === 'Green' ? '#2ecc71' : (adminGetResultDetails(activePeriodDataAdmin.winningNumber).colors[0] === 'Red' ? '#e74c3c' : '#9b59b6')}">${activePeriodDataAdmin.winningNumber}</strong>`;
+                  } else {
+                      adminStopClientTimer();
+                      if(adminTimerDisplayLiveEl) adminTimerDisplayLiveEl.innerHTML = `00 : <span id="admin-countdown-seconds-live">00</span>`;
+                      if (adminCurrentPeriodIdLiveEl) adminCurrentPeriodIdLiveEl.textContent = "Waiting...";
+                  }
+                  // For previous results, you'd call a function that fetches from gameRounds
+                  // For now, let's just clear them or set to ? if no active round
+                  if (activePeriodDataAdmin.status !== "ended") adminUpdatePreviousResultsDisplay([]);
+
+
+              } else {
+                  activePeriodDataAdmin = null;
+                  if(adminCurrentPeriodEl) adminCurrentPeriodEl.value = "None";
+                  if(adminEndRoundBtn) adminEndRoundBtn.disabled = true; if(adminStartNewRoundBtn) adminStartNewRoundBtn.disabled = false; 
+                  // Clear live display
+                  if (adminCurrentPeriodIdLiveEl) adminCurrentPeriodIdLiveEl.textContent = "No Active Round";
+                  if (adminGameModeTitleDisplayEl) adminGameModeTitleDisplayEl.textContent = "Game Paused";
+                  if (adminTimerDisplayLiveEl) adminTimerDisplayLiveEl.innerHTML = `00 : <span id="admin-countdown-seconds-live">00</span>`;
+                   adminUpdatePreviousResultsDisplay([]);
+              }
+              checkAndManageAutoRound(); 
+          }, (err) => { /* ... error handling ... */ });
+      }
+
+      // NEW: Timer functions for Admin Panel Display
+      function adminStartClientTimer(startTime, durationSeconds) {
+          adminStopClientTimer(); 
+          adminGameTimerInterval = setInterval(() => {
+              const now = Date.now();
+              const endTime = startTime.getTime() + (durationSeconds * 1000);
+              let timeRemainingSeconds = Math.max(0, Math.floor((endTime - now) / 1000));
+              
+              if (timeRemainingSeconds <= 0) {
+                  adminStopClientTimer();
+                  if(adminTimerDisplayLiveEl) adminTimerDisplayLiveEl.textContent = "Ending...";
+                  return;
+              }
+              const minutes = Math.floor(timeRemainingSeconds / 60);
+              const seconds = timeRemainingSeconds % 60;
+              if(adminTimerDisplayLiveEl) adminTimerDisplayLiveEl.innerHTML = `${minutes.toString().padStart(2, '0')} : <span id="admin-countdown-seconds-live">${seconds.toString().padStart(2, '0')}</span>`;
+          }, 1000);
+      }
+      function adminStopClientTimer() { if (adminGameTimerInterval) { clearInterval(adminGameTimerInterval); adminGameTimerInterval = null; } }
+
+      // NEW: Helper for admin result details (similar to user client)
+      function adminGetResultDetails(number) {
+          const num = parseInt(number); let colors = []; 
+          if (num === 0) colors = ["Red", "Violet"]; else if (num === 5) colors = ["Green", "Violet"];
+          else if ([1,3,7,9].includes(num)) colors = ["Green"]; else if ([2,4,6,8].includes(num)) colors = ["Red"];
+          return { number: num, colors }; // Simplified for display
+      }
+      
+      // NEW: Basic function to update previous results display in admin (needs real data source)
+      // For full functionality, this should listen to `gameRounds` collection for the current gameMode
+      function adminUpdatePreviousResultsDisplay(historyData) { // historyData should be an array of {winningNumber: X}
+        if (!adminPrevResDisplayEls || adminPrevResDisplayEls.length === 0) return;
+        adminPrevResDisplayEls.forEach((el, index) => {
+            if (el && historyData[index] && historyData[index].winningNumber !== null) {
+                const num = historyData[index].winningNumber;
+                el.textContent = num;
+                el.className = ''; // Clear existing
+                el.classList.add(`admin-prev-res-${num}`);
+            } else if (el) {
+                el.textContent = '?';
+                el.className = '';
+            }
+        });
+      }
+      // You would need a listener similar to the user client's listenToGameHistory,
+      // but scoped for the admin panel, e.g., listenToAdminGameHistory(gameMode)
+      // and call adminUpdatePreviousResultsDisplay from there.
+      // For brevity, I'm omitting the full implementation of that listener here.
+      // It would be called from listenToActivePeriodAdmin when gameMode changes or data updates.
+
+
+      // --- Rest of the functions (adminStartNewRound, adminEndRoundAndProcessDirectly, settings, auto mode, request handling, user edits, bet totals, etc.) ---
+      // --- remain the same as the previous "No Cloud Functions" version. Ensure they use the globally declared DOM element variables ---
+      // ... (Paste the rest of your JavaScript functions from the previous "No Cloud Functions" version here) ...
+      // MAKE SURE `getResultDetails` is defined if `processClientSidePayouts` uses it, or pass `resultDetails` to it.
+      // The `getResultDetails` for admin display is named `adminGetResultDetails` to avoid conflict if you copy from user client.
+      // For `processClientSidePayouts`, ensure it uses a `getResultDetails` function that provides `size` as well.
+      // For simplicity, I'll redefine a getResultDetails here that processClientSidePayouts can use.
+      function getResultDetails(number) { /* Duplicated from user client for processClientSidePayouts */ const num = parseInt(number); let colors = []; let size = (num >= 0 && num <= 4) ? "Small" : "Big"; if (num === 0) { colors = ["Red", "Violet"]; } else if (num === 5) { colors = ["Green", "Violet"]; } else if ([1, 3, 7, 9].includes(num)) { colors = ["Green"]; } else if ([2, 4, 6, 8].includes(num)) { colors = ["Red"]; } return { number: num, colors, size: size.toUpperCase() }; }
+      async function adminStartNewRound() { /* ... Same ... */ if (!currentAdminUser) { alert("Admin not logged in."); return; } if (activePeriodDataAdmin && activePeriodDataAdmin.status === "betting") { alert("Admin: A round is already in progress."); return; } if (autoStartRoundTimeoutAdmin) { clearTimeout(autoStartRoundTimeoutAdmin); autoStartRoundTimeoutAdmin = null; } try { const modeOpt = adminGameModeSelectEl.options[adminGameModeSelectEl.selectedIndex]; const gameMode = modeOpt.value; const duration = parseInt(modeOpt.dataset.duration); if (isNaN(duration)) { alert("Admin: Invalid duration."); return; } const now = new Date(); const periodId = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}${Math.floor(Math.random()*900+100)}`; const newData = { periodId, gameMode, gameModeDuration: duration, startTime: serverTimestamp(), status: "betting", winningNumber: null }; const activeRef = doc(db, "gameConfig", "activePeriod"); const roundRef = doc(db, "gameRounds", periodId); const batch = writeBatch(db); batch.set(activeRef, newData); batch.set(roundRef, newData); await batch.commit(); if(adminNextNumberInput) adminNextNumberInput.value = "-1"; alert(`Admin: New round ${periodId} started for ${modeOpt.text}.`); } catch (e) { alert(`Admin: Error starting round: ${e.message}`); } }
+      async function adminSaveDepositSettings() { /* ... Same ... */ if (!currentAdminUser) { alert("Admin not logged in."); return; } const qr = adminDepositQrUrlEl.value.trim(); const inst = adminDepositInstructionsEl.value.trim(); if (!qr || !inst) { alert("Admin: QR URL and Instructions required."); return; } try { await setDoc(doc(db, "gameConfig", "depositSettings"), { qrImageUrl: qr, instructions: inst }, { merge: true }); alert("Admin: Deposit settings saved!"); } catch (e) { alert("Admin: Error saving deposit settings: " + e.message); } }
+      async function adminSavePayoutSettings() { /* ... Same ... */ if (!currentAdminUser) { alert("Admin not logged in."); return; } const payouts = { number: parseFloat(adminPayoutNumberEl.value) || 9, size: parseFloat(adminPayoutSizeEl.value) || 1.9, color: parseFloat(adminPayoutColorEl.value) || 1.9, violet: parseFloat(adminPayoutVioletEl.value) || 4.5, redOnZero: (parseFloat(adminPayoutColorEl.value) || 1.9) * 0.5 + (parseFloat(adminPayoutVioletEl.value) || 4.5), greenOnFive: (parseFloat(adminPayoutColorEl.value) || 1.9) * 0.5 + (parseFloat(adminPayoutVioletEl.value) || 4.5) }; try { await setDoc(doc(db, "gameConfig", "payoutSettings"), payouts, { merge: true }); alert("Admin: Payout settings saved!"); } catch (e) { alert("Admin: Error saving payout settings: " + e.message); } }
+      async function handleAutoModeToggle() { /* ... Same ... */ if (!currentAdminUser) { if(adminAutoModeToggleEl) adminAutoModeToggleEl.checked = autoModeSettingsAdmin.isEnabled; return; } const state = adminAutoModeToggleEl.checked; try { await setDoc(doc(db, "gameConfig", "autoModeSettings"), { isEnabled: state }, { merge: true }); alert(`Admin: Auto mode ${state ? 'ENABLED' : 'DISABLED'}.`); } catch (e) { alert("Admin: Error saving auto mode: " + e.message); if(adminAutoModeToggleEl) adminAutoModeToggleEl.checked = !state; } }
+      function listenToAutoModeSettingsAdmin() { /* ... Same ... */ if(unsubscribeAutoModeSettingsAdmin) unsubscribeAutoModeSettingsAdmin(); const ref = doc(db, "gameConfig", "autoModeSettings"); unsubscribeAutoModeSettingsAdmin = onSnapshot(ref, (snap) => { if (snap.exists()) { autoModeSettingsAdmin.isEnabled = snap.data().isEnabled || false; } else { autoModeSettingsAdmin.isEnabled = false; setDoc(ref, { isEnabled: false }); } if(adminAutoModeToggleEl) adminAutoModeToggleEl.checked = autoModeSettingsAdmin.isEnabled; if (!autoModeSettingsAdmin.isEnabled) { if (autoStartRoundTimeoutAdmin) clearTimeout(autoStartRoundTimeoutAdmin); if (autoEndRoundTimeoutAdmin) clearTimeout(autoEndRoundTimeoutAdmin); autoStartRoundTimeoutAdmin=null; autoEndRoundTimeoutAdmin=null;} checkAndManageAutoRound(); }, (err) => { autoModeSettingsAdmin.isEnabled = false; if(adminAutoModeToggleEl) adminAutoModeToggleEl.checked = false; }); }
+      async function checkAndManageAutoRound() { /* Calls adminEndRoundAndProcessDirectly for auto mode */ if (!currentAdminUser || !autoModeSettingsAdmin.isEnabled) { if (autoStartRoundTimeoutAdmin) clearTimeout(autoStartRoundTimeoutAdmin); if (autoEndRoundTimeoutAdmin) clearTimeout(autoEndRoundTimeoutAdmin); autoStartRoundTimeoutAdmin=null; autoEndRoundTimeoutAdmin=null; return; } if (!activePeriodDataAdmin || activePeriodDataAdmin.status === "ended") { if (autoEndRoundTimeoutAdmin) clearTimeout(autoEndRoundTimeoutAdmin); autoEndRoundTimeoutAdmin = null; if (!autoStartRoundTimeoutAdmin) { autoStartRoundTimeoutAdmin = setTimeout(async () => { autoStartRoundTimeoutAdmin = null; const currentPeriodSnap = await getDoc(doc(db, "gameConfig", "activePeriod")); const currentActive = currentPeriodSnap.exists() ? currentPeriodSnap.data() : null; if (autoModeSettingsAdmin.isEnabled && currentAdminUser && (!currentActive || currentActive.status === "ended")) { await adminStartNewRound(); } }, AUTO_ROUND_START_DELAY); } } else if (activePeriodDataAdmin.status === "betting") { if (autoStartRoundTimeoutAdmin) clearTimeout(autoStartRoundTimeoutAdmin); autoStartRoundTimeoutAdmin = null; if (!autoEndRoundTimeoutAdmin) { if (!activePeriodDataAdmin.startTime || !activePeriodDataAdmin.gameModeDuration) return; const startMs = activePeriodDataAdmin.startTime.toDate().getTime(); const durationMs = activePeriodDataAdmin.gameModeDuration * 1000; const endMs = startMs + durationMs; const waitMs = (endMs - Date.now()) + AUTO_ROUND_END_BUFFER; if (waitMs > 0) { autoEndRoundTimeoutAdmin = setTimeout(async () => { autoEndRoundTimeoutAdmin = null; const currentPeriodSnap = await getDoc(doc(db, "gameConfig", "activePeriod")); if (currentPeriodSnap.exists() && currentPeriodSnap.data().periodId === activePeriodDataAdmin.periodId && currentPeriodSnap.data().status === "betting") { if (autoModeSettingsAdmin.isEnabled && currentAdminUser) { if(adminNextNumberInput) adminNextNumberInput.value = "-1"; await adminEndRoundAndProcessDirectly(); } } }, waitMs); } else if (activePeriodDataAdmin.status === "betting") { if(adminNextNumberInput) adminNextNumberInput.value = "-1"; await adminEndRoundAndProcessDirectly(); } } } }
+      function listenToDepositSettingsAdmin() { /* ... Same ... */ if(unsubscribeDepositSettingsAdmin) unsubscribeDepositSettingsAdmin(); const ref = doc(db, "gameConfig", "depositSettings"); unsubscribeDepositSettingsAdmin = onSnapshot(ref, (snap) => { if (snap.exists()) { const s = snap.data(); if(adminDepositQrUrlEl) adminDepositQrUrlEl.value = s.qrImageUrl || ""; if(adminDepositInstructionsEl) adminDepositInstructionsEl.value = s.instructions || ""; } }, (err) => console.error("[Admin] Error listening to deposit settings:", err)); }
+      function listenToPayoutSettingsAdmin() { /* ... Same ... */ if(unsubscribePayoutSettingsAdmin) unsubscribePayoutSettingsAdmin(); const ref = doc(db, "gameConfig", "payoutSettings"); unsubscribePayoutSettingsAdmin = onSnapshot(ref, (snap) => { if (snap.exists()) { const s = snap.data(); if(adminPayoutNumberEl) adminPayoutNumberEl.value = s.number || 9; if(adminPayoutSizeEl) adminPayoutSizeEl.value = s.size || 1.9; if(adminPayoutColorEl) adminPayoutColorEl.value = s.color || 1.9; if(adminPayoutVioletEl) adminPayoutVioletEl.value = s.violet || 4.5;} }, (err) => console.error("[Admin] Error listening to payout settings:", err)); }
+      function renderTable(tbodyEl, data, renderRowFunc, emptyMsg = "No data available.") { /* ... Same ... */ if(!tbodyEl) return; tbodyEl.innerHTML = ""; if (data.length === 0) { const tr = tbodyEl.insertRow(); const td = tr.insertCell(); td.setAttribute("colspan", "100%"); td.textContent = emptyMsg; td.style.textAlign = "center"; return; } data.forEach(item => renderRowFunc(tbodyEl, item)); }
+      function listenToAdminDepositRequests() { /* ... Same ... */ if (unsubscribeAdminDeposits) unsubscribeAdminDeposits(); const q = query(collection(db, "depositRequests"), where("status", "==", "pending"), orderBy("requestedAt", "desc")); unsubscribeAdminDeposits = onSnapshot(q, (snap) => { const reqs = []; snap.forEach(d => reqs.push({ id: d.id, ...d.data() })); renderTable(adminDepositRequestsBodyEl, reqs, (tbody, req) => { const tr = tbody.insertRow(); tr.insertCell().textContent = req.userDisplayName || req.userId.substring(0,8); tr.insertCell().textContent = formatCurrency(req.amount); tr.insertCell().textContent = req.transactionId; tr.insertCell().innerHTML = req.qrImageUrlUsed ? `<img src="${req.qrImageUrlUsed}" alt="QR">` : 'N/A'; tr.insertCell().textContent = req.requestedAt?.toDate().toLocaleString() || 'N/A'; const actionTd = tr.insertCell(); actionTd.className = "action-buttons"; const approveBtn = document.createElement('button'); approveBtn.textContent = "Approve"; approveBtn.onclick = () => handleDepositRequest(req.id, req.userId, req.amount, true); const rejectBtn = document.createElement('button'); rejectBtn.textContent = "Reject"; rejectBtn.className = "reject-btn"; rejectBtn.onclick = () => handleDepositRequest(req.id, req.userId, req.amount, false); actionTd.append(approveBtn, rejectBtn); }, "No pending deposit requests."); }, err => console.error("[Admin] Error fetching deposit requests:", err)); }
+      async function handleDepositRequest(reqId, userId, amount, approve) { /* ... Same, direct Firestore write ... */ if (!currentAdminUser) { alert("Admin not logged in."); return; } const reqRef = doc(db, "depositRequests", reqId); const userRef = doc(db, "users", userId); const logRef = doc(collection(db, "transactionHistory")); try { await runTransaction(db, async (t) => { const rDoc = await t.get(reqRef); if (!rDoc.exists() || rDoc.data().status !== 'pending') throw new Error("Req already processed."); if (approve) { t.update(userRef, { walletBalance: increment(Number(amount)) }); t.set(logRef, { userId, type: "deposit_approved", amount: Number(amount), timestamp: serverTimestamp(), details: `Deposit ${reqId} approved.`}); t.update(reqRef, { status: "approved", processedAt: serverTimestamp(), processedBy: currentAdminUser.uid }); } else { t.update(reqRef, { status: "rejected", processedAt: serverTimestamp(), processedBy: currentAdminUser.uid }); t.set(logRef, { userId, type: "deposit_rejected", amount: Number(amount), timestamp: serverTimestamp(), details: `Deposit ${reqId} rejected.`}); } }); alert(`Deposit ${reqId} ${approve ? 'approved' : 'rejected'}.`); } catch (e) { alert(`Error: ${e.message}`); } }
+      function listenToAdminWithdrawalRequests() { /* ... Same ... */ if (unsubscribeAdminWithdrawals) unsubscribeAdminWithdrawals(); const q = query(collection(db, "withdrawalRequests"), where("status", "==", "pending"), orderBy("requestedAt", "desc")); unsubscribeAdminWithdrawals = onSnapshot(q, (snap) => { const reqs = []; snap.forEach(d => reqs.push({ id: d.id, ...d.data() })); renderTable(adminWithdrawalRequestsBodyEl, reqs, (tbody, req) => { const tr = tbody.insertRow(); tr.insertCell().textContent = req.userDisplayName || req.userId.substring(0,8); tr.insertCell().textContent = req.upiId; tr.insertCell().textContent = formatCurrency(req.amount); tr.insertCell().textContent = req.requestedAt?.toDate().toLocaleString() || 'N/A'; const actionTd = tr.insertCell(); actionTd.className = "action-buttons"; const approveBtn = document.createElement('button'); approveBtn.textContent = "Approve"; approveBtn.onclick = () => handleWithdrawalRequest(req.id, req.userId, req.amount, true); const rejectBtn = document.createElement('button'); rejectBtn.textContent = "Reject"; rejectBtn.className = "reject-btn"; rejectBtn.onclick = () => handleWithdrawalRequest(req.id, req.userId, req.amount, false); actionTd.append(approveBtn, rejectBtn); }, "No pending withdrawal requests."); }, err => console.error("[Admin] Error fetching withdrawal requests:", err)); }
+      async function handleWithdrawalRequest(reqId, userId, amount, approve) { /* ... Same, direct Firestore write ... */ if (!currentAdminUser) { alert("Admin not logged in."); return; } const reqRef = doc(db, "withdrawalRequests", reqId); const userRef = doc(db, "users", userId); const logRef = doc(collection(db, "transactionHistory")); try { await runTransaction(db, async (t) => { const rDoc = await t.get(reqRef); if (!rDoc.exists() || rDoc.data().status !== 'pending') throw new Error("Req already processed."); if (approve) { t.update(reqRef, { status: "approved", processedAt: serverTimestamp(), processedBy: currentAdminUser.uid }); t.set(logRef, { userId, type: "withdrawal_approved", amount: Number(amount), timestamp: serverTimestamp(), details: `Withdrawal ${reqId} approved.`}); } else { t.update(userRef, { walletBalance: increment(Number(amount)) }); t.update(reqRef, { status: "rejected", processedAt: serverTimestamp(), processedBy: currentAdminUser.uid }); t.set(logRef, { userId, type: "withdrawal_rejected_refund", amount: Number(amount), timestamp: serverTimestamp(), details: `Withdrawal ${reqId} rejected. Funds returned.`}); } }); alert(`Withdrawal ${reqId} ${approve ? 'approved' : 'rejected'}.`); } catch (e) { alert(`Error: ${e.message}`); } }
+      function listenToAdminUsers() { /* ... Same ... */ if (unsubscribeAdminUsers) unsubscribeAdminUsers(); const q = query(collection(db, "users"), orderBy("createdAt", "desc")); unsubscribeAdminUsers = onSnapshot(q, (snap) => { const users = []; snap.forEach(d => users.push({ id: d.id, ...d.data() })); renderTable(adminUsersBodyEl, users, (tbody, user) => { const tr = tbody.insertRow(); tr.insertCell().textContent = user.displayName || 'N/A'; tr.insertCell().textContent = user.mobileNumber || 'N/A'; tr.insertCell().textContent = formatCurrency(user.walletBalance); tr.insertCell().textContent = user.isBanned ? 'Banned' : 'Active'; const actionTd = tr.insertCell(); actionTd.className = "action-buttons"; const editBtn = document.createElement('button'); editBtn.textContent = "Edit"; editBtn.onclick = () => openUserEditModal(user); const banBtn = document.createElement('button'); banBtn.textContent = user.isBanned ? "Unban" : "Ban"; banBtn.className = user.isBanned ? "unban-btn" : "ban-btn"; banBtn.onclick = () => toggleUserBanStatus(user.id, !user.isBanned); actionTd.append(editBtn, banBtn); }, "No users found."); }, err => console.error("[Admin] Error fetching users:", err)); }
+      function openUserEditModal(user) { /* ... Same ... */ if(editUserIdInputEl) editUserIdInputEl.value = user.id; if(editUserIdDisplayEl) editUserIdDisplayEl.textContent = user.id.substring(0,8) + "..."; if(editUserNameEl) editUserNameEl.value = user.displayName || ""; if(editUserMobileEl) editUserMobileEl.value = user.mobileNumber || ""; if(editUserBalanceEl) editUserBalanceEl.value = (user.walletBalance || 0).toFixed(2); if(editUserNewPasswordEl) editUserNewPasswordEl.value = ""; if(userEditModalMessageEl) userEditModalMessageEl.textContent = ""; if(userEditModalEl) userEditModalEl.style.display = 'flex'; }
+      async function toggleUserBanStatus(uid, shouldBeBanned) { /* ... Same, direct Firestore write ... */ if (!currentAdminUser) { alert("Admin not logged in."); return; } const userRef = doc(db, "users", uid); try { await updateDoc(userRef, { isBanned: shouldBeBanned }); alert(`User ${uid} ${shouldBeBanned ? 'banned' : 'unbanned'}.`); } catch (e) { alert("Error updating user status: " + e.message); } }
+      async function saveUserEditsDirectly() { if (!currentAdminUser) { alert("Admin not logged in."); return; } const userId = editUserIdInputEl.value; if (!userId) { if(userEditModalMessageEl) userEditModalMessageEl.textContent = "Error: User ID missing."; return; } const newName = editUserNameEl.value.trim(); const newBalanceStr = editUserBalanceEl.value; const newPassword = editUserNewPasswordEl.value.trim(); if (!newName) { if(userEditModalMessageEl) userEditModalMessageEl.textContent = "Display Name cannot be empty."; return; } let newBalance; if (newBalanceStr === "" || isNaN(parseFloat(newBalanceStr))) { if(userEditModalMessageEl) userEditModalMessageEl.textContent = "Balance must be a valid number."; return; } newBalance = parseFloat(newBalanceStr); if (newBalance < 0) { if(userEditModalMessageEl) userEditModalMessageEl.textContent = "Balance cannot be negative."; return; } if(userEditModalSaveBtn) userEditModalSaveBtn.disabled = true; if(userEditModalMessageEl) {userEditModalMessageEl.textContent = "Saving directly to Firestore..."; userEditModalMessageEl.style.color = "#FFD700";} const userRef = doc(db, "users", userId); const updates = { displayName: newName, walletBalance: newBalance }; try { await updateDoc(userRef, updates); if(userEditModalMessageEl){userEditModalMessageEl.textContent = "User details updated successfully!"; userEditModalMessageEl.style.color = "#2ecc71";} if (newPassword) { alert(`Password for user ${userId} NOT CHANGED. Admin must do this manually in Firebase Auth Console.`); } setTimeout(() => { if(userEditModalEl) userEditModalEl.style.display = 'none'; if(userEditModalMessageEl) userEditModalMessageEl.textContent = ""; }, 2500); } catch (error) { console.error("Error updating user details directly:", error); if(userEditModalMessageEl){userEditModalMessageEl.textContent = `Error: ${error.message}. Check Firestore Rules.`; userEditModalMessageEl.style.color = "#e74c3c";} } finally { if(userEditModalSaveBtn) userEditModalSaveBtn.disabled = false; } }
+      async function adminEndRoundAndProcessDirectly() { if (!currentAdminUser) { alert("Admin not logged in."); return; } if (!activePeriodDataAdmin || activePeriodDataAdmin.status !== "betting") { alert("Admin: No active betting round to end."); return; } if (autoEndRoundTimeoutAdmin) { clearTimeout(autoEndRoundTimeoutAdmin); autoEndRoundTimeoutAdmin = null; } let winningNumber = parseInt(adminNextNumberInput.value); if (winningNumber < -1 || winningNumber > 9 || isNaN(winningNumber)) { alert("Admin: Invalid winning number (0-9, or -1 for random)."); return; } if (winningNumber === -1) winningNumber = Math.floor(Math.random() * 10); if(manualResultStatusEl) {manualResultStatusEl.textContent = "Ending round with auto result (direct write)..."; manualResultStatusEl.style.color = "#FFD700";} const periodId = activePeriodDataAdmin.periodId; const activePeriodRef = doc(db, "gameConfig", "activePeriod"); const gameRoundRef = doc(db, "gameRounds", periodId); const updatePayload = { status: "ended", winningNumber: winningNumber, endedAt: serverTimestamp() }; try { const batch = writeBatch(db); batch.update(activePeriodRef, updatePayload); batch.update(gameRoundRef, updatePayload); await batch.commit(); alert(`Admin: Round ${periodId} ended. Result: ${winningNumber}.`); if(manualResultStatusEl){manualResultStatusEl.textContent = `Round ${periodId} ended. Result: ${winningNumber}. (Direct write)`; manualResultStatusEl.style.color = "green";} await processClientSidePayouts(periodId, winningNumber); } catch (error) { alert(`Admin: Error ending round (direct write): ${error.message}`); if(manualResultStatusEl){manualResultStatusEl.textContent = `Error: ${error.message}`; manualResultStatusEl.style.color = "red";} } }
+      async function publishManualResultDirectly() { if (!currentAdminUser) { alert("Admin not logged in."); return; } const winningNumber = parseInt(manualResultNumberEl.value); if (isNaN(winningNumber) || winningNumber < 0 || winningNumber > 9) { if(manualResultStatusEl){manualResultStatusEl.textContent = "Invalid number (0-9)."; manualResultStatusEl.style.color = "red";} return; } if(adminPublishManualResultBtn) adminPublishManualResultBtn.disabled = true; if(manualResultStatusEl) {manualResultStatusEl.textContent = "Publishing manual result (direct write)..."; manualResultStatusEl.style.color = "#FFD700";} let periodIdToUpdate = (activePeriodDataAdmin && activePeriodDataAdmin.status === "betting") ? activePeriodDataAdmin.periodId : null; const updatePayload = { status: "ended", winningNumber: winningNumber, endedAt: serverTimestamp(), manuallySetByAdmin: currentAdminUser.uid }; try { const batch = writeBatch(db); if (periodIdToUpdate) { const activePeriodRef = doc(db, "gameConfig", "activePeriod"); const gameRoundRef = doc(db, "gameRounds", periodIdToUpdate); batch.update(activePeriodRef, updatePayload); batch.update(gameRoundRef, updatePayload); } else { const now = new Date(); periodIdToUpdate = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}${now.getHours().toString().padStart(2, '0')}${now.getMinutes().toString().padStart(2, '0')}${now.getSeconds().toString().padStart(2, '0')}${Math.floor(Math.random()*900+100)}`; const selectedModeOption = adminGameModeSelectEl.options[adminGameModeSelectEl.selectedIndex]; const gameMode = selectedModeOption.value; const gameModeDuration = parseInt(selectedModeOption.dataset.duration); const newRoundData = { ...updatePayload, periodId: periodIdToUpdate, gameMode, gameModeDuration, startTime: serverTimestamp()}; batch.set(doc(db, "gameRounds", periodIdToUpdate), newRoundData); batch.set(doc(db, "gameConfig", "activePeriod"), newRoundData); alert("No active betting round. Created new ended round with manual result."); } await batch.commit(); if(manualResultStatusEl){manualResultStatusEl.textContent = `Manual result (${winningNumber}) published for period ${periodIdToUpdate}.`; manualResultStatusEl.style.color = "#2ecc71";} alert(`Manual result (${winningNumber}) published!`); await processClientSidePayouts(periodIdToUpdate, winningNumber); } catch (error) { console.error("Error publishing manual result (direct write):", error); if(manualResultStatusEl){manualResultStatusEl.textContent = `Error: ${error.message}`; manualResultStatusEl.style.color = "#e74c3c";} } finally { if(adminPublishManualResultBtn) adminPublishManualResultBtn.disabled = false; } }
+      async function refreshBetTotalsDirectly() { if (!currentAdminUser) { alert("Admin not logged in."); return; } if (!activePeriodDataAdmin || activePeriodDataAdmin.status !== "betting") { if(adminBetTotalsStatusEl){adminBetTotalsStatusEl.textContent = "No active betting round."; adminBetTotalsStatusEl.style.color = "orange";} if(adminBetTotalsDisplayEl) adminBetTotalsDisplayEl.innerHTML = ""; return; } if(adminRefreshBetTotalsBtn) adminRefreshBetTotalsBtn.disabled = true; if(adminBetTotalsStatusEl) {adminBetTotalsStatusEl.textContent = "Fetching bet totals (direct query)..."; adminBetTotalsStatusEl.style.color = "#FFD700";} if(adminBetTotalsDisplayEl) adminBetTotalsDisplayEl.innerHTML = ""; try { const periodId = activePeriodDataAdmin.periodId; const betsSnapshot = await getDocs(query(collection(db, "bets"), where("periodId", "==", periodId))); const totals = { colors: { Green: 0, Red: 0, Violet: 0 }, numbers: {}, sizes: { Small: 0, Big: 0 }}; for(let i=0; i<=9; i++) totals.numbers[i] = 0; if (betsSnapshot.empty) { if(adminBetTotalsStatusEl){adminBetTotalsStatusEl.textContent = "No bets found for this period."; adminBetTotalsStatusEl.style.color = "orange";} displayBetTotals(totals); return; } betsSnapshot.forEach(docSnap => { const bet = docSnap.data(); if (bet.betType === "color" && totals.colors.hasOwnProperty(bet.betValue)) totals.colors[bet.betValue] += bet.amount; else if (bet.betType === "number" && totals.numbers.hasOwnProperty(bet.betValue)) totals.numbers[bet.betValue] += bet.amount; else if (bet.betType === "size" && totals.sizes.hasOwnProperty(bet.betValue)) totals.sizes[bet.betValue] += bet.amount; }); if(adminBetTotalsStatusEl){adminBetTotalsStatusEl.textContent = `Totals for Period: ${periodId}`; adminBetTotalsStatusEl.style.color = "#2ecc71";} displayBetTotals(totals); } catch (error) { console.error("Error fetching bet totals (direct query):", error); if(adminBetTotalsStatusEl){adminBetTotalsStatusEl.textContent = `Error: ${error.message}`; adminBetTotalsStatusEl.style.color = "#e74c3c";} } finally { if(adminRefreshBetTotalsBtn) adminRefreshBetTotalsBtn.disabled = false; } }
+      function displayBetTotals(totals) { if(!adminBetTotalsDisplayEl) return; adminBetTotalsDisplayEl.innerHTML = ""; const createItem = (label, value) => { const item = document.createElement('div'); item.className = 'total-item'; item.innerHTML = `${label} <strong>${formatCurrency(value)}</strong>`; adminBetTotalsDisplayEl.appendChild(item); }; if(totals.colors) for (const color in totals.colors) createItem(`Color: ${color}`, totals.colors[color]); if(totals.numbers) for (const num in totals.numbers) createItem(`Number: ${num}`, totals.numbers[num]); if(totals.sizes) for (const size in totals.sizes) createItem(`Size: ${size}`, totals.sizes[size]); if(adminBetTotalsDisplayEl.innerHTML === "") adminBetTotalsDisplayEl.innerHTML = "<p style='text-align:center; grid-column: 1 / -1;'>No bets or totals returned.</p>"; }
+      async function processClientSidePayouts(periodId, winningNumber) { if (!currentAdminUser) { return; } console.log(`[Admin-ClientPayout] Processing Period: ${periodId}, Win#: ${winningNumber}`); const resultDetails = getResultDetails(winningNumber); const betsQuery = query(collection(db, "bets"), where("periodId", "==", periodId), where("status", "==", "pending")); try { const betsSnapshot = await getDocs(betsQuery); if (betsSnapshot.empty) { return; } const batch = writeBatch(db); let totalPayoutsThisRound = {}; betsSnapshot.forEach(docSnap => { const bet = { id: docSnap.id, ...docSnap.data() }; let isWin = false; let calculatedPayout = 0; let payoutRate = 1; if (bet.betType === "number" && parseInt(bet.betValue) === resultDetails.number) { isWin = true; payoutRate = payoutSettings.number; } else if (bet.betType === "size" && bet.betValue.toUpperCase() === resultDetails.size) { isWin = true; payoutRate = payoutSettings.size; } else if (bet.betType === "color") { if (bet.betValue === "Violet" && resultDetails.colors.includes("Violet")) { isWin = true; payoutRate = payoutSettings.violet; } else if (bet.betValue === "Green" && resultDetails.colors.includes("Green")) { isWin = true; payoutRate = (winningNumber === 5 && payoutSettings.greenOnFive) ? payoutSettings.greenOnFive : payoutSettings.color; } else if (bet.betValue === "Red" && resultDetails.colors.includes("Red")) { isWin = true; payoutRate = (winningNumber === 0 && payoutSettings.redOnZero) ? payoutSettings.redOnZero : payoutSettings.color; } } if (isWin) { calculatedPayout = bet.amount * payoutRate; batch.update(doc(db, "bets", bet.id), { status: "won", payout: calculatedPayout }); totalPayoutsThisRound[bet.userId] = (totalPayoutsThisRound[bet.userId] || 0) + calculatedPayout; } else { batch.update(doc(db, "bets", bet.id), { status: "lost", payout: 0 }); } }); for (const userId in totalPayoutsThisRound) { if (totalPayoutsThisRound[userId] > 0) { const userRef = doc(db, "users", userId); batch.update(userRef, { walletBalance: increment(totalPayoutsThisRound[userId]) }); batch.set(doc(collection(db, "transactionHistory")), { userId: userId, type: "payout_awarded_admin_client", amount: totalPayoutsThisRound[userId], timestamp: serverTimestamp(), details: `Winnings for period ${periodId}, win# ${winningNumber}. (Admin Panel)` }); } } await batch.commit(); alert(`Client-side payout simulation done for ${periodId}.`); } catch (error) { console.error(`[Admin-ClientPayout] Error period ${periodId}:`, error); alert(`Error client payout: ${error.message}.`); } }
+
+    </script>
+</body>
+</html>
