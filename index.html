@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Watch Ads to Verify</title>
+    <title>Watch Interstitial Ad - DecodeToday</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -14,6 +14,7 @@
             height: 100vh;
             margin: 0;
             background-color: #f0f2f5;
+            text-align: center;
         }
         h1 {
             color: #333;
@@ -33,70 +34,95 @@
         #adButton:hover {
             background-color: #0056b3;
         }
+        #adButton:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
         #status {
             margin-top: 20px;
             font-size: 16px;
             color: #333;
+            min-height: 20px;
+        }
+        #loading {
+            display: none;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #666;
+        }
+        #adContainer {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+        }
+        #adIframe {
+            width: 100%;
+            height: 100%;
+            border: none;
         }
     </style>
 </head>
 <body>
-    <h1>Watch Ad to Unlock Movie Search</h1>
+    <h1>Watch Interstitial Ad to Verify</h1>
     <button id="adButton">Watch Ad</button>
-    <div id="status">Click the button to watch an ad and get verified!</div>
+    <div id="status"></div>
+    <div id="loading">Loading ad... Please wait.</div>
+    <div id="adContainer">
+        <iframe id="adIframe" src=""></iframe>
+    </div>
 
-    <!-- Telegram WebApp SDK -->
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- AdsGram SDK -->
-    <script async src="https://adsgram.ai/js/adv.js"></script>
+    <script src="https://adsgram.ai/js/adsgram.js"></script>
     <script>
-        // Initialize AdsGram with your Block ID (replace with your actual Block ID)
-        const blockId = 'YOUR_ADSGRAM_BLOCK_ID'; // Replace with your AdsGram Block ID
-        const AdController = window.Adsgram.init({ blockId });
-
-        // Get Telegram WebApp instance
-        const WebApp = window.Telegram.WebApp;
-        WebApp.ready();
-
-        // Get user info from Telegram
-        const user = WebApp.initDataUnsafe.user;
-        const userId = user ? user.id : 'unknown';
-
-        // Handle ad button click
+        const blockId = 'int-14977'; // Final Block ID from AdsGram
         const adButton = document.getElementById('adButton');
-        const statusDiv = document.getElementById('status');
+        const status = document.getElementById('status');
+        const loading = document.getElementById('loading');
+        const adContainer = document.getElementById('adContainer');
+        const adIframe = document.getElementById('adIframe');
+        let verificationTime = null;
+
+        window.Adsgram.init({ blockId });
 
         adButton.addEventListener('click', () => {
-            statusDiv.textContent = 'Loading ad...';
-            AdController.show()
-                .then(() => {
-                    // Ad watched successfully
-                    statusDiv.textContent = 'Ad watched! You are verified for 30 minutes!';
-                    adButton.style.display = 'none';
-                    
-                    // Send signal to bot
-                    WebApp.sendData(JSON.stringify({
-                        user_id: userId,
-                        status: 'ad_watched'
-                    }));
-                    
-                    // Close Mini App after a delay
-                    setTimeout(() => {
-                        WebApp.close();
-                    }, 2000);
-                })
-                .catch((error) => {
-                    // Handle errors (skipped or error)
-                    if (error.message === 'AdSkiped') {
-                        statusDiv.textContent = 'Ad was skipped. Please watch the full ad.';
-                    } else {
-                        statusDiv.textContent = 'Error loading ad. Try again.';
-                    }
-                });
+            if (verificationTime && (Date.now() - verificationTime) < 30 * 60 * 1000) {
+                status.textContent = 'You are already verified for 30 minutes';
+                return;
+            }
+
+            adButton.disabled = true;
+            loading.style.display = 'block';
+            status.textContent = '';
+
+            // Simulate Interstitial ad (30 seconds)
+            adContainer.style.display = 'block';
+            adIframe.src = 'about:blank'; // Placeholder for ad content
+            setTimeout(() => {
+                adContainer.style.display = 'none';
+                loading.style.display = 'none';
+                status.textContent = 'You are verified for 30 minutes';
+                adButton.disabled = false;
+                verificationTime = Date.now(); // Set verification timestamp
+
+                // Verification is now local - no server call
+            }, 30000); // 30 seconds
         });
 
-        // Expand Mini App to full screen
-        WebApp.expand();
+        // Check verification status on page load
+        window.addEventListener('load', () => {
+            if (verificationTime && (Date.now() - verificationTime) < 30 * 60 * 1000) {
+                status.textContent = 'You are verified for 30 minutes';
+                adButton.disabled = true;
+                setTimeout(() => {
+                    status.textContent = '';
+                    adButton.disabled = false;
+                }, (30 * 60 * 1000) - (Date.now() - verificationTime));
+            }
+        });
     </script>
 </body>
 </html>
