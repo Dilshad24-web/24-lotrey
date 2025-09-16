@@ -3,126 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Watch Interstitial Ad - DecodeToday</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f2f5;
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 20px;
-        }
-        #adButton {
-            padding: 15px 30px;
-            font-size: 18px;
-            color: white;
-            background-color: #007bff;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-        }
-        #adButton:hover {
-            background-color: #0056b3;
-        }
-        #adButton:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-        #status {
-            margin-top: 20px;
-            font-size: 16px;
-            color: #333;
-            min-height: 20px;
-        }
-        #loading {
-            display: none;
-            margin-top: 10px;
-            font-size: 14px;
-            color: #666;
-        }
-        #adContainer {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.8);
-            z-index: 1000;
-        }
-        #adIframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-    </style>
+    <title>Movie Bot Verification</title>
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/babel-standalone@7.22.9/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-    <h1>Watch Interstitial Ad to Verify</h1>
-    <button id="adButton">Watch Ad</button>
-    <div id="status"></div>
-    <div id="loading">Loading ad... Please wait.</div>
-    <div id="adContainer">
-        <iframe id="adIframe" src=""></iframe>
-    </div>
+    <div id="root" class="min-h-screen bg-gray-100 flex items-center justify-center"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-    <script src="https://adsgram.ai/js/adsgram.js"></script>
-    <script>
-        const blockId = 'int-14977'; // Final Block ID from AdsGram
-        const adButton = document.getElementById('adButton');
-        const status = document.getElementById('status');
-        const loading = document.getElementById('loading');
-        const adContainer = document.getElementById('adContainer');
-        const adIframe = document.getElementById('adIframe');
-        let verificationTime = null;
+        const VerificationApp = () => {
+            const [step, setStep] = useState(1);
+            const [timeLeft, setTimeLeft] = useState(5);
+            const [isTimerComplete, setIsTimerComplete] = useState(false);
 
-        window.Adsgram.init({ blockId });
+            useEffect(() => {
+                if (timeLeft > 0) {
+                    const timer = setInterval(() => {
+                        setTimeLeft((prev) => {
+                            if (prev <= 1) {
+                                clearInterval(timer);
+                                setIsTimerComplete(true);
+                                return 0;
+                            }
+                            return prev - 1;
+                        });
+                    }, 1000);
+                    return () => clearInterval(timer);
+                }
+            }, [timeLeft, step]);
 
-        adButton.addEventListener('click', () => {
-            if (verificationTime && (Date.now() - verificationTime) < 30 * 60 * 1000) {
-                status.textContent = 'You are already verified for 30 minutes';
-                return;
-            }
+            const handleContinue = () => {
+                if (step < 4) {
+                    setStep(step + 1);
+                    setTimeLeft(5);
+                    setIsTimerComplete(false);
+                }
+            };
 
-            adButton.disabled = true;
-            loading.style.display = 'block';
-            status.textContent = '';
-
-            // Simulate Interstitial ad (30 seconds)
-            adContainer.style.display = 'block';
-            adIframe.src = 'about:blank'; // Placeholder for ad content
-            setTimeout(() => {
-                adContainer.style.display = 'none';
-                loading.style.display = 'none';
-                status.textContent = 'You are verified for 30 minutes';
-                adButton.disabled = false;
-                verificationTime = Date.now(); // Set verification timestamp
-
-                // Verification is now local - no server call
-            }, 30000); // 30 seconds
-        });
-
-        // Check verification status on page load
-        window.addEventListener('load', () => {
-            if (verificationTime && (Date.now() - verificationTime) < 30 * 60 * 1000) {
-                status.textContent = 'You are verified for 30 minutes';
-                adButton.disabled = true;
+            const handleGateLink = () => {
+                const code = crypto.randomUUID();
+                const username = new URLSearchParams(window.location.search).get('username') || 'unknown';
+                // Open Telegram to send verification code to bot
+                const telegramUrl = `https://t.me/DecodeToday_bot?start=verify_${code}_${username}`;
+                window.open(telegramUrl, '_blank');
+                // Redirect to private group after a short delay
                 setTimeout(() => {
-                    status.textContent = '';
-                    adButton.disabled = false;
-                }, (30 * 60 * 1000) - (Date.now() - verificationTime));
-            }
-        });
+                    window.location.href = 'https://t.me/+SarEpTSciJM3NzI1';
+                }, 1000); // 1-second delay to ensure Telegram opens first
+            };
+
+            return (
+                <div className="p-6 bg-white rounded-lg shadow-lg max-w-md w-full text-center flex flex-col items-center">
+                    <h1 className="text-2xl font-bold mb-4">Movie Bot Verification</h1>
+                    <p className="text-gray-600 mb-4">Step {step} of 4</p>
+                    <div className="mb-6">
+                        <p className="text-lg">Please wait for {timeLeft} seconds...</p>
+                    </div>
+                    <div className="mt-4">
+                        {isTimerComplete && step < 4 && (
+                            <button
+                                onClick={handleContinue}
+                                className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition"
+                            >
+                                Continue
+                            </button>
+                        )}
+                        {isTimerComplete && step === 4 && (
+                            <button
+                                onClick={handleGateLink}
+                                className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition"
+                            >
+                                Gate Link
+                            </button>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<VerificationApp />, document.getElementById('root'));
     </script>
 </body>
 </html>
